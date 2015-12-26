@@ -1,8 +1,23 @@
 #include "genesis.h"
-#include "sprite.h"
+#include "blast.h"
 
 char abuf[50];
 u8 _sprite_init = 0;
+
+void sprite_init(spritedef* sprite, u16 addr, u16 steps, u8 x, u8 y, u8 w, u8 h, u8 pal) {
+    sprite->posx = x;
+    sprite->posy = y;
+    sprite->size = SPRITE_SIZE(w,h);
+    sprite->width = w;
+    sprite->height = h;
+    sprite->startaddr = addr;
+    sprite->tile_attr = TILE_ATTR_FULL(pal, 1, 0, 0, addr);
+    sprite->link = 0;
+    sprite->curstep = 0;
+    sprite->steps = steps;
+    sprite->tilesize = w*h;
+    sprite->pal = pal;
+}
 
 void animate_sprite(spritedef *sprt)
 {
