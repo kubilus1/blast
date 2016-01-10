@@ -16,6 +16,8 @@
 #define COLL_UP 8
 #define COLL_DOWN 16
 
+u16 hs;
+u16 vs;
 
 typedef struct t_map{
     u16 width;
@@ -60,6 +62,7 @@ void screen_left(blastmap* bmap, u16* hScroll);
 void screen_right(blastmap* bmap, u16* hScroll);
 void screen_up(blastmap* bmap, u16* vScroll);
 void screen_down(blastmap* bmap, u16* vScroll);
+void center_screen(blastmap* bmap, u16 sprite_idx, u16* hscroll, u16* vscroll);
 
 u8 check_left(blastmap* bmap, spritedef* sprite);
 u8 check_right(blastmap* bmap, spritedef* sprite);

@@ -29,19 +29,27 @@ typedef struct
     // width & height 
     u8 height;
     u8 width;
+    //
+    u16 vposx;
+    u16 vposy;
 } spritedef;
 
 // List of all current sprites
-spritedef _sprite_all[MAX_SPRITE];
+spritedef* _sprite_all[MAX_SPRITE];
 
 u8 _sprite_init;
 
 void animate_sprite(spritedef * sprt);
 
-void sprite_init(spritedef* sprite, u16 addr, u16 steps, u8 x, u8 y, u8 w, u8 h, u8 pal);
-int add_sprite(spritedef sprite);
+u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, u8 x, u8 y, u8 w, u8 h, u8 pal);
+//int add_sprite(spritedef sprite);
+int add_sprite(spritedef* sprite);
 int drop_sprite(int index);
 void hscroll_sprites(s8 hscroll); 
 void vscroll_sprites(s8 vscroll);
+void sprite_left(spritedef *sprt, u8 amnt, u16 max);
+void sprite_right(spritedef *sprt, u8 amnt, u16 max);
+void sprite_up(spritedef *sprt, u8 amnt, u16 max);
+void sprite_down(spritedef *sprt, u8 amnt, u16 max);
 
 #endif

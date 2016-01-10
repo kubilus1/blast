@@ -1,7 +1,6 @@
 #include "genesis.h"
 #include "blast.h"
 
-
 void blast_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, u16 plane) {
     bmap->tX = 64; 
     bmap->tY = 64;
@@ -17,39 +16,63 @@ void blast_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, u16 plane) {
 }
 
 u8 check_up(blastmap* bmap, spritedef* sprite) {
-    char str[10];
+    //char str[10];
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->posy) % 8) != 0) {
+    if(((sprite->vposy) % 8) != 0) {
         return 0;
     }
-    // 
-    u8 tile_row = (sprite->posy - 1) / 8;
+    // Need to consider wrap-around 
+    u16 tile_row = (sprite->vposy - 1) / 8;
+
+    //if(tile_row 
+    if(tile_row >= bmap->maph) {
+        tile_row = 0;
+    }
+
     return check_col(bmap, sprite, tile_row);
 }
 u8 check_down(blastmap* bmap, spritedef* sprite) {
-    char str[10];
+    //char str[10];
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->posy) % 8) != 0) {
+    if(((sprite->vposy) % 8) != 0) {
         return 0;
     }
-    // 
-    u8 tile_row = (sprite->posy + 8) / 8;
+    // Need to consider wrap-around
+    u16 tile_row = (sprite->vposy + (sprite->height * 8)) / 8;
+
+    if(tile_row >= bmap->maph) {
+        tile_row = sprite->height;
+    }
+
     return check_col(bmap, sprite, tile_row);
 }
 
 u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
+    char str[10];
     u8 coll;
+    u8 i;
     u16 tile;
-    // How many rows to test?
-    u8 tile_col = sprite->posx / 8;
-    u8 end_col = tile_col + sprite->width;
-    if(((sprite->posx) % 8) != 0) {
+    // How many cols to test?
+    u8 tile_col = sprite->vposx / 8;
+    u8 numcols = sprite->width;
+    
+    if(((sprite->vposx) % 8) != 0) {
         // We are crossing rows
-        end_col++;
+        numcols++;
     }
 
+    uintToStr(tile_col, str, 2);
+    BMP_drawText(str, 0, 6);
+    uintToStr(tile_row, str, 2);
+    BMP_drawText(str, 3, 6);
+   
     coll = 0;
-    for(; tile_col<end_col;tile_col++) {
+    for(i=0; i < numcols; i++, tile_col++) {
+
+        if(tile_col >= bmap->mapw) {
+            tile_col = 0;
+        }
+
         tile = GET_TILE_XY(bmap, tile_col, tile_row);
         coll |= bmap->tiles->coll[(tile-1)];
     }
@@ -58,47 +81,66 @@ u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
 }
 
 u8 check_row(blastmap* bmap, spritedef* sprite, u8 tile_col) {
+    char str[10];
     u8 coll;
+    u8 i;
     u16 tile;
     // How many rows to test?
-    u8 tile_row = sprite->posy / 8;
-    u8 end_row = tile_row + sprite->height;
-    if(((sprite->posy) % 8) != 0) {
+    u8 tile_row = sprite->vposy / 8;
+    u8 numrows = sprite->height;
+
+    if(((sprite->vposy) % 8) != 0) {
         // We are crossing rows
-        end_row++;
+        numrows++;
     }
 
+    uintToStr(tile_col, str, 2);
+    BMP_drawText(str, 0, 6);
+    uintToStr(tile_row, str, 2);
+    BMP_drawText(str, 3, 6);
+
     coll = 0;
-    for(; tile_row<end_row;tile_row++) {
+    for(i=0; i < numrows; i++, tile_row++) {
+
+        if(tile_row >= bmap->maph) {
+            tile_row = 0;
+        }
+
         tile = GET_TILE_XY(bmap, tile_col, tile_row);
         coll |= bmap->tiles->coll[(tile-1)];
-                
+        
     }
 
     return coll;
 }
 
 u8 check_left(blastmap* bmap, spritedef* sprite) {
-    char str[10];
+    //char str[10];
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->posx) % 8) != 0) {
+    if(((sprite->vposx) % 8) != 0) {
         return 0;
     }
     // 
-    u8 tile_col = (sprite->posx - 1) / 8;
+    u16 tile_col = (sprite->vposx - 1) / 8;
+    if(tile_col >= bmap->mapw) {
+        tile_col = 0;
+    }
     return check_row(bmap, sprite, tile_col);
 }
 
 u8 check_right(blastmap* bmap, spritedef* sprite) {
-    char str[10];
+    //char str[10];
     
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->posx) % 8) != 0) {
+    if(((sprite->vposx) % 8) != 0) {
         return 0;
     }
 
     // Which column are we testing? 
-    u8 tile_col = (sprite->posx + (sprite->width*8)) / 8;
+    u16 tile_col = (sprite->vposx + (sprite->width*8)) / 8;
+    if(tile_col >= bmap->mapw) {
+        tile_col = sprite->width;
+    }
     return check_row(bmap, sprite, tile_col);
 }
 
@@ -160,6 +202,44 @@ void screen_down(blastmap* bmap, u16* vScroll) {
         load_map_row(bmap,winH+1);
     }
 }
+
+void center_screen(blastmap* bmap, u16 sprite_idx, u16* hscroll, u16* vscroll) {
+    spritedef *tsprite;
+    tsprite = _sprite_all[sprite_idx];
+    
+    u8 scroll_factor = 1;
+
+    //128x104
+    // Center the screen
+    if(tsprite->posy > 124) {
+        //tsprite->posy -= ship->speed;
+        vscroll_sprites(-scroll_factor);
+        screen_down(bmap,vscroll);
+        //if(ship->speed == 2)
+        //    screen_down(&backgroundmap,&vScroll);
+    } else if (tsprite->posy < 84) {
+        //tsprite->posy += ship->speed;
+        vscroll_sprites(scroll_factor);
+        screen_up(bmap,vscroll);
+        //if(ship->speed == 2)
+        //    screen_up(&backgroundmap,&vScroll);
+    }
+
+    if(tsprite->posx > 148){
+        //tsprite->posx -= ship->speed;
+        hscroll_sprites(-scroll_factor);
+        screen_right(bmap,hscroll);
+        //if(ship->speed == 2)
+        //    screen_right(&backgroundmap,&hScroll);
+    } else if(tsprite->posx < 108) {
+        //tsprite->posx += ship->speed;
+        hscroll_sprites(scroll_factor);
+        screen_left(bmap,hscroll);
+        //if(ship->speed == 2)
+        //    screen_left(&backgroundmap,&hScroll);
+    }
+}
+
 
 void load_map(blastmap* bmap, int xoffset, int yoffset) {
     /*
@@ -223,9 +303,11 @@ void load_visible_map(blastmap* bmap, int xoffset, int yoffset) {
     bmap->mapw = bmap->tiles->width;
     bmap->maph = bmap->tiles->height;
 
+    // Y pos in tilemap
     i = bmap->tY;
+    // Y pos in window
     iW = bmap->winY;
-    for(ycount=0;ycount<winH;ycount++) {
+    for(ycount=0;ycount<=winH;ycount++) {
 
         // wrap around
         if(i == bmap->planheight) {
@@ -235,9 +317,11 @@ void load_visible_map(blastmap* bmap, int xoffset, int yoffset) {
             iW -= bmap->maph;
         }
 
+        // X pos in tilemap
         j = bmap->tX;
+        // X pos in window
         jW = bmap->winX;
-        for(xcount=0;xcount<winW;xcount++){
+        for(xcount=0;xcount<=winW;xcount++){
             if(j == bmap->planwidth) {
                 j -= bmap->planwidth;
             } 
@@ -286,7 +370,7 @@ void load_map_row(blastmap* bmap, u8 row) {
 
     j = bmap->tX;
     jW = bmap->winX;
-    for(xcount=0;xcount<winW;xcount++){
+    for(xcount=0;xcount<=winW+1;xcount++){
         if(j == bmap->planwidth) {
             j = 0;
         } 
@@ -331,7 +415,7 @@ void load_map_col(blastmap* bmap, u8 col) {
 
     j = bmap->tY;
     jW = bmap->winY;
-    for(ycount=0;ycount<winH;ycount++){
+    for(ycount=0;ycount<=winH+1;ycount++){
         if(j == bmap->planheight) {
             j = 0;
         } 

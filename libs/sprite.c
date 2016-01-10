@@ -4,7 +4,7 @@
 char abuf[50];
 u8 _sprite_init = 0;
 
-void sprite_init(spritedef* sprite, u16 addr, u16 steps, u8 x, u8 y, u8 w, u8 h, u8 pal) {
+u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, u8 x, u8 y, u8 w, u8 h, u8 pal) {
     sprite->posx = x;
     sprite->posy = y;
     sprite->size = SPRITE_SIZE(w,h);
@@ -13,11 +13,53 @@ void sprite_init(spritedef* sprite, u16 addr, u16 steps, u8 x, u8 y, u8 w, u8 h,
     sprite->startaddr = addr;
     sprite->tile_attr = TILE_ATTR_FULL(pal, 1, 0, 0, addr);
     sprite->link = 0;
+    sprite->prev_link = 0;
     sprite->curstep = 0;
     sprite->steps = steps;
     sprite->tilesize = w*h;
     sprite->pal = pal;
+    sprite->vposx = x;
+    sprite->vposy = y;
+    return add_sprite(sprite);
 }
+
+
+void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
+    sprt->posx-=amnt;
+    if(sprt->vposx  <= amnt) {
+        //sprt->vposx = (sprt->vposx - amnt) + 65536;
+        sprt->vposx = max - (amnt - 1);
+    } else {
+        sprt->vposx -= amnt;
+    }
+}
+
+void sprite_right(spritedef *sprt, u8 amnt, u16 max) {
+    sprt->posx+=amnt;
+    if(sprt->vposx + amnt > max) {
+        sprt->vposx = 0 + (amnt);
+    } else {
+        sprt->vposx += amnt;
+    }
+}
+void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
+    sprt->posy-=amnt;
+    if(sprt->vposy <= amnt) {
+        //sprt->vposx = (sprt->vposx - amnt) + 65536;
+        sprt->vposy = max - (amnt - 1);
+    } else {
+        sprt->vposy -= amnt;
+    }
+}
+void sprite_down(spritedef *sprt, u8 amnt, u16 max) {
+    sprt->posy+=amnt;
+    if((sprt->vposy + amnt) >= max) {
+        sprt->vposy = 0 + (amnt);
+    } else {
+        sprt->vposy += amnt;
+    }
+}
+
 
 void animate_sprite(spritedef *sprt)
 {
@@ -28,7 +70,7 @@ void animate_sprite(spritedef *sprt)
     sprt->curstep++;
 }
 
-int add_sprite(spritedef sprite)
+int add_sprite(spritedef* sprite)
 {
     // Somehow detect if the sprite_list is new.  Put something into position 0.
 
@@ -36,8 +78,8 @@ int add_sprite(spritedef sprite)
     {
         _sprite_init = 1;
         _sprite_all[0] = sprite;
-        _sprite_all[0].link = 0;
-        VDP_setSpriteP(0, &sprite);
+        _sprite_all[0]->link = 0;
+        VDP_setSpriteP(0, sprite);
         return 0;
     }
 
@@ -50,7 +92,7 @@ int add_sprite(spritedef sprite)
     while(1)
     {
         // If the next link is 0, we are at the end
-        next_idx = _sprite_all[cur_idx].link;
+        next_idx = _sprite_all[cur_idx]->link;
         last_idx = cur_idx;
         if(next_idx == 0)
         {
@@ -86,19 +128,19 @@ int add_sprite(spritedef sprite)
 
     // Setup new sprite
     _sprite_all[cur_idx] = sprite;
-    _sprite_all[cur_idx].link = next_idx;
+    _sprite_all[cur_idx]->link = next_idx;
 
     // Update link of last_idx
-    _sprite_all[last_idx].link = cur_idx;
+    _sprite_all[last_idx]->link = cur_idx;
 
     //Tell the VDP about the updates.
     VDP_setSpriteP(
         cur_idx, 
-        &_sprite_all[cur_idx]
+        _sprite_all[cur_idx]
     );
     VDP_setSpriteP(
         last_idx, 
-        &_sprite_all[last_idx]
+        _sprite_all[last_idx]
     );
 
     return cur_idx;
@@ -115,14 +157,14 @@ int drop_sprite(int del_idx)
         //VDP_drawText("deleting...", 20, 1);
         // If the next link is 0, we are at the end
         last_idx = idx;
-        idx = _sprite_all[idx].link;
+        idx = _sprite_all[idx]->link;
         if(idx == 0)
             break;
         
         if(idx == del_idx)
         {
             //Found the item to delete
-            _sprite_all[last_idx].link = _sprite_all[idx].link;
+            _sprite_all[last_idx]->link = _sprite_all[idx]->link;
             break;
         }
 
@@ -131,7 +173,7 @@ int drop_sprite(int del_idx)
     //Tell the VDP about the updates.
     VDP_setSpriteP(
         last_idx, 
-        &_sprite_all[last_idx]
+        _sprite_all[last_idx]
     );
    
     return 0;
@@ -145,8 +187,8 @@ void hscroll_sprites(s8 hscroll)
     while(1)
     {
         // If the next link is 0, we are at the end
-        next_idx = _sprite_all[cur_idx].link;
-        _sprite_all[cur_idx].posx += hscroll;
+        next_idx = _sprite_all[cur_idx]->link;
+        _sprite_all[cur_idx]->posx += hscroll;
         if(next_idx == 0)
         {
             break;
@@ -162,9 +204,14 @@ void vscroll_sprites(s8 vscroll)
 
     while(1)
     {
+        //VDP_drawTextBG(VDP_PLAN_A, "SCROLL", 0x8000, 4,4);
         // If the next link is 0, we are at the end
-        next_idx = _sprite_all[cur_idx].link;
-        _sprite_all[cur_idx].posy += vscroll;
+        next_idx = _sprite_all[cur_idx]->link;
+        _sprite_all[cur_idx]->posy += vscroll;
+        VDP_setSpriteP(
+            cur_idx, 
+            _sprite_all[cur_idx]
+        );
         if(next_idx == 0)
         {
             break;
