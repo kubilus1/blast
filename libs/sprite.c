@@ -53,7 +53,7 @@ void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
 }
 void sprite_down(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy+=amnt;
-    if((sprt->vposy + amnt) >= max) {
+    if((sprt->vposy + amnt) > max) {
         sprt->vposy = 0 + (amnt);
     } else {
         sprt->vposy += amnt;

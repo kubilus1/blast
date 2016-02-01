@@ -37,11 +37,13 @@ u8 check_down(blastmap* bmap, spritedef* sprite) {
     if(((sprite->vposy) % 8) != 0) {
         return 0;
     }
-    // Need to consider wrap-around
-    u16 tile_row = (sprite->vposy + (sprite->height * 8)) / 8;
+    
+    u16 tile_row = (sprite->vposy / 8) + sprite->height;
 
+    // Check wrap-around
     if(tile_row >= bmap->maph) {
-        tile_row = sprite->height;
+        // If we go over a boundary, point to the correct tile pos.
+        tile_row -= bmap->maph;
     }
 
     return check_col(bmap, sprite, tile_row);
@@ -136,10 +138,10 @@ u8 check_right(blastmap* bmap, spritedef* sprite) {
         return 0;
     }
 
-    // Which column are we testing? 
-    u16 tile_col = (sprite->vposx + (sprite->width*8)) / 8;
+    u16 tile_col = (sprite->vposx / 8) + sprite->width;
+    // Check wrap-around 
     if(tile_col >= bmap->mapw) {
-        tile_col = sprite->width;
+        tile_col -= bmap->mapw;
     }
     return check_row(bmap, sprite, tile_col);
 }
