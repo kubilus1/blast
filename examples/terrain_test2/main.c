@@ -8,6 +8,10 @@ u16 terrain_tile_offset = 0;
 blastmap terrain1map;
 u16 asprite_idx;
 spritedef asprite;
+
+u16 bsprite_idx;
+spritedef bsprite;
+
 u16 hscroll;
 u16 vscroll;
 char str[10];
@@ -17,6 +21,7 @@ void vblank() {
     //VDP_setVerticalScroll(PLAN_B,vScroll*4);
     VDP_setHorizontalScroll(PLAN_A,hs);
     VDP_setVerticalScroll(PLAN_A,vs);
+    VDP_updateSprites();
 }
 
 void myJoyHandler(u16 joy, u16 changed, u16 state) {
@@ -112,7 +117,7 @@ int main() {
 
     //spritedef bsprite;
     //u16 bsprite_idx; 
-    //bsprite_idx = sprite_init(&bsprite,terrain_tile_offset+7,1,12,12,1,1,PAL0);
+    bsprite_idx = sprite_init(&bsprite,terrain_tile_offset+7,1,32,32,1,1,PAL1);
     //bsprite_idx = add_sprite(bsprite);
 
     uintToStr(asprite_idx, str, 2);
@@ -150,7 +155,7 @@ int main() {
 
         //vscroll_sprites(-2);
         myJoyHandler(JOY_1,0,JOY_readJoypad(JOY_1));
-        VDP_updateSprites();
+        //VDP_updateSprites();
         VDP_waitVSync();
         //VDP_setSpriteP(asprite_idx, &asprite);
         //VDP_setSpriteP(bsprite_idx, &bsprite);

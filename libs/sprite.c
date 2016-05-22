@@ -189,6 +189,10 @@ void hscroll_sprites(s8 hscroll)
         // If the next link is 0, we are at the end
         next_idx = _sprite_all[cur_idx]->link;
         _sprite_all[cur_idx]->posx += hscroll;
+        VDP_setSpriteP(
+            cur_idx, 
+            _sprite_all[cur_idx]
+        );
         if(next_idx == 0)
         {
             break;
