@@ -45,7 +45,7 @@ all: libblast.a
 %.o: %.s
 	$(CC) $(FLAGS) -c $< -o $@
 
-install:
+install: libblast.a
 	mkdir -p $(GENDEV)/include/blast
 	cp libblast.a $(GENDEV)/m68k-elf/lib
 	cp incs/*.h $(GENDEV)/include/blast

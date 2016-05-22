@@ -147,7 +147,6 @@ u8 check_right(blastmap* bmap, spritedef* sprite) {
 }
 
 void screen_left(blastmap* bmap, u16* hScroll) {
-    *hScroll+=1;
     if(*hScroll % 8 == 0) {
         bmap->tX-=1;
         bmap->winX-=1;
@@ -159,6 +158,7 @@ void screen_left(blastmap* bmap, u16* hScroll) {
         }
         load_map_col(bmap,0);
     }
+    *hScroll+=1;
 }
 
 void screen_right(blastmap* bmap, u16* hScroll) {
@@ -177,7 +177,9 @@ void screen_right(blastmap* bmap, u16* hScroll) {
 }
 
 void screen_up(blastmap* bmap, u16* vScroll) {
-    *vScroll-=1;
+
+
+    // Check only on tile boundaries 
     if(*vScroll % 8 == 0) {
         bmap->tY-=1;
         bmap->winY-=1;
@@ -189,6 +191,8 @@ void screen_up(blastmap* bmap, u16* vScroll) {
         }
         load_map_row(bmap,0);
     }
+    // vScroll - current vertical scroll position
+    *vScroll-=1;
 }
 void screen_down(blastmap* bmap, u16* vScroll) {
     *vScroll+=1;
@@ -353,20 +357,29 @@ void load_map_row(blastmap* bmap, u8 row) {
      *
      */
 
+    // Track row/col on screen
     u8 i;
     u8 j;
+
+    // Track position in tilemap data
     u16 iW;
     u16 jW;
+
     u8 xcount;
 
+
+    // Set row position we want to load at on screen
     i = bmap->tY + row;
+    // Set row posistion to load from tilemap data
     iW = bmap->winY + row;
 
     // wrap around
     if(i >= bmap->planheight) {
+        // We have wrapped around in the plane
         i -= bmap->planheight;
     } 
     if(iW >= bmap->maph) {
+        // We have wrapped around in the tilemap data
         iW -= bmap->maph;
     }
 
