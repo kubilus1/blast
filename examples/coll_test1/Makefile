@@ -28,6 +28,7 @@ MKISOFS = mkisofs
 SCD_LOADER = scd/LukeProjectCD
 
 OPTION =
+#OPTION = --save-temps
 #INCS = -I. -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/m68k-elf/include -Isrc -Ires
 INCS = -I$(GENDEV)/include/blast -I. -I $(GENDEV)/sgdk/res -I $(GENDEV)/sgdk/inc -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/m68k-elf/m68k-elf/include -I$(GENDEV)/include/blast -Isrc -Ires
 CCFLAGS = $(OPTION) -m68000 -Wall -O2 -c -fomit-frame-pointer

@@ -1,7 +1,8 @@
 GENDEV?=/opt/toolchains/gen/
 MAKE?=make
 GENBIN=$(GENDEV)/bin
-GENGCC_BIN=$(GENDEV)/m68k-elf/bin
+#GENGCC_BIN=$(GENDEV)/m68k-elf/bin
+GENGCC_BIN=$(GENDEV)/bin
 
 CC = $(GENGCC_BIN)/m68k-elf-gcc 
 AR = $(GENGCC_BIN)/m68k-elf-ar 
@@ -11,7 +12,7 @@ RM = rm -f
 ASMZ80 = $(GENBIN)/sjasm 
 BINTOS = $(GENBIN)/bintos 
 
-OPTION= -Dnologo_ 
+OPTION= -Dnologo_ --save-temps -fverbose-asm -g 
 
 CS=$(wildcard libs/*.c)
 SS=$(wildcard libs/*.s)
@@ -22,7 +23,7 @@ RESOURCES+=$(S80S:.s80=.o)
 
 blast.a_OBJS=$(RESOURCES)
 
-INCS = -Iincs -I$(GENDEV)/m68k-elf/include
+INCS = -Iincs -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/sgdk/inc -I$(GENDEV)/sgdk/res
 FLAGS = $(OPTION) -m68000 -Wall -O1 -c -fomit-frame-pointer $(INCS) 
 FLAGSZ80 = -isrc -iincs -I$(GENDEV)/m68k-elf/include
 
