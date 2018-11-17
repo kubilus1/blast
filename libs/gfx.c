@@ -17,3 +17,18 @@ u16 load_bmp(u32 *data, u16 w, u16 h) {
     vdp_offset += ((w/8) * (h/8));
     return tmp_offset;
 }
+
+
+u16 load_tile(u32 *data, u16 w, u16 h) {
+    u16 tmp_offset = vdp_offset;
+    
+    VDP_loadTileData(
+            data,
+            vdp_offset,
+            w/8,
+            h/8
+    );
+
+    vdp_offset += ((w/8) * (h/8));
+    return tmp_offset;
+}

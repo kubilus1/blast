@@ -1,7 +1,7 @@
 #ifndef _MAP
 #define _MAP
-#include "genesis.h"
-#include "blast.h"
+//#include "genesis.h"
+//#include "blast.h"
 
 // winH and winW -> height and width of visible window in tiles
 #define winH 28
@@ -18,6 +18,9 @@
 
 u16 hs;
 u16 vs;
+
+struct _spritedef;
+typedef struct _spritedef spritedef;
 
 typedef struct t_map{
     u16 width;
@@ -47,13 +50,14 @@ typedef struct d_map{
     u16 tileoffset;
 
     // Which plane are we using?
-    u16 plane;
+    //u16 plane;
+    VDPPlan plane;
 
     // tiles -> map of tiles
     tilemap* tiles;
 } blastmap;
 
-void blast_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, u16 plane);
+void blastmap_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, VDPPlan plane);
 void load_map(blastmap* bmap, int xoffset, int yoffset);
 void load_visible_map(blastmap* bmap, int xoffset, int yoffset);
 void load_map_row(blastmap* bmap, u8 row);
