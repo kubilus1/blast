@@ -159,9 +159,9 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
 // Probably just have a universal direction setter.
 
 void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
-    int i;
+    //int i;
     sprt->posx-=amnt;
-    sprt->direction=192;
+    //sprt->direction=192;
 
     /*
     if(((sprt->posx) % 8) == 0) {
@@ -201,9 +201,9 @@ void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
 }
 
 void sprite_right(spritedef *sprt, u8 amnt, u16 max) {
-    int i;
+    //int i;
     sprt->posx+=amnt;
-    sprt->direction=64;
+    //sprt->direction=64;
     sprite_setrowcol(sprt);
 
     /*
@@ -239,10 +239,10 @@ void sprite_right(spritedef *sprt, u8 amnt, u16 max) {
 }
 void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy-=amnt;
-    sprt->direction=0;
+    //sprt->direction=0;
     sprite_setrowcol(sprt);
-    uintToStr((sprt->posy),abuf,3);
-    VDP_drawText(abuf, 30,16);
+    //uintToStr((sprt->posy),abuf,3);
+    //VDP_drawText(abuf, 30,16);
 /*    if(((sprt->vposy) % 8) == 0) {
         int i;
         for (i=0;i<sprt->height;i++) {
@@ -259,10 +259,10 @@ void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
 }
 void sprite_down(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy+=amnt;
-    sprt->direction=128;
+    //sprt->direction=128;
     sprite_setrowcol(sprt);
-    uintToStr((sprt->posy),abuf,3);
-    VDP_drawText(abuf, 30,16);
+    //uintToStr((sprt->posy),abuf,3);
+    //VDP_drawText(abuf, 30,16);
 /*    if(((sprt->vposy) % 8) == 0) {
         int i;
         for (i=0;i<sprt->height;i++) {
@@ -450,18 +450,64 @@ void check_t_collision(u8* slist, u8 list_len, blastmap* map, void (*callback)(s
     u8 coll = 0;
     for(i=0;i<list_len;i++){
         sprt = _sprite_all[slist[i]];
+        coll = 0;
+
+        // Check diagonals
         switch(sprt->direction) {
+            case 32:
+                if(check_up(map, sprt))
+                    sprt->direction = 64;
+                break;
+            case 96:
+                if(check_right(map, sprt))
+                    sprt->direction = 128;
+                break;
+            case 160:
+                if(check_down(map, sprt))
+                    sprt->direction = 192;
+                break;
+            case 224:
+                if(check_left(map, sprt))
+                    sprt->direction = 0;
+                break;
+        }
+
+        switch(sprt->direction) {
+            case 224:
             case 0:
-                coll = check_up(map, sprt);
+                coll |= check_up(map, sprt);
+                if(coll && sprt->direction == 224){
+                    sprt->direction = 192;
+                    coll = 0;
+                }
                 break;
+            case 32:
+                // Already checked 
+                //coll = check_up(map, sprt);
             case 64:
-                coll = check_right(map, sprt);
+                coll |= check_right(map, sprt);
+                if(coll && sprt->direction == 32){
+                    sprt->direction = 0;
+                    coll = 0;
+                }
                 break;
+            case 96:
+                //coll = check_right(map, sprt);
             case 128:
-                coll = check_down(map, sprt);
+                coll |= check_down(map, sprt);
+                if(coll && sprt->direction == 96){
+                    sprt->direction = 64;
+                    coll = 0;
+                }
                 break;
+            case 160:
+                //coll = check_down(map, sprt);
             case 192:
-                coll = check_left(map, sprt);
+                coll |= check_left(map, sprt);
+                if(coll && sprt->direction == 160){
+                    sprt->direction = 128;
+                    coll = 0;
+                }
                 break;
         }
         if(coll != 0) {

@@ -24,44 +24,70 @@ u8 lista[1];
 u8 listb[2];
 
 void do_coll(spritedef* sprta, spritedef* sprtb) {
+    // Move sprite in the same direction
     switch(sprta->direction) {
         case 0:
-            sprite_up(sprtb,1,512);
-            //sprite_down(sprta,1,512);
+        case 32:
+            // UP
+            if(sprta->posy > sprtb->posy){
+                sprtb->direction = 0;
+                sprtb->force = 1;
+                sprta->force = 0;
+            }
             break;
         case 64:
-            sprite_right(sprtb,1,512);
-            //sprite_left(sprta,1,512);
+        case 96:
+            // RIGHT
+            if(sprta->posx < sprtb->posx){
+                sprtb->direction = 64;
+                sprtb->force = 1;
+                sprta->force = 0;
+            }
             break;
         case 128:
-            sprite_down(sprtb,1,512);
-            //sprite_up(sprta,1,512);
+        case 160:
+            // DOWN
+            if(sprta->posy < sprtb->posy){
+                sprtb->direction = 128;
+                sprtb->force = 1;
+                sprta->force = 0;
+            }
             break;
         case 192:
-            sprite_left(sprtb,1,512);
-            //sprite_right(sprta,1,512);
+        case 224:
+            // LEFT
+            if(sprta->posx > sprtb->posx){
+                sprtb->direction = 192;
+                sprtb->force = 1;
+                sprta->force = 0;
+            }
             break;
     }
+    //sprtb->direction = sprta->direction;
+    //sprtb->force = 1;
+    //sprta->force = 0;
 }
 void terrain_coll(spritedef* sprt, u8 coll) {
     VDP_drawText(" T COLLIS    ", 2,2);
     switch(sprt->direction) {
         case 0:
-            //sprite_up(sprt,2,512);
-            sprite_down(sprt,2,512);
+            if(coll != COLL_UP)
+                sprt->force = 0;
             break;
         case 64:
-            //sprite_right(sprt,2,512);
-            sprite_left(sprt,2,512);
+            if(coll != COLL_RIGHT)
+                sprt->force = 0;
             break;
         case 128:
-            //sprite_down(sprt,2,512);
-            sprite_up(sprt,2,512);
+            if(coll != COLL_DOWN)
+                sprt->force = 0;
             break;
         case 192:
-            //sprite_left(sprt,2,512);
-            sprite_right(sprt,2,512);
+            if(coll != COLL_LEFT)
+                sprt->force = 0;
             break;
+        default:
+            sprt->force = 0;
     }
 }
 
@@ -71,60 +97,94 @@ void (*t_coll_callback)(spritedef* sprt, u8 coll) = &terrain_coll;
 void myJoyHandler(u16 joy, u16 changed, u16 state) {
     //VDP_drawTextBG(VDP_PLAN_A,"JOY   ",0x8000,1,1);
     if (joy == JOY_1) {
-        int mask = 1;
-        u16 bitmask = state;
-        u8 coll = 0;
-        
-        while(bitmask) {
-            switch(bitmask & mask) {
-                case BUTTON_LEFT:
-                    //VDP_drawTextBG(VDP_PLAN_A,"LEFT  ",0x8000,1,1);
-                    coll = check_left(&terrain1map, &asprite);
-                    if(coll == NOCOLL || coll == COLL_LEFT) {
-                        //asprite.posx--;
-                        //asprite.vposx--;
-                        sprite_left(&asprite, 1, 512);
-                    }
-                    break;
-                case BUTTON_RIGHT:
-                    //VDP_drawTextBG(VDP_PLAN_A,"RIGHT ",0x8000,1,1);
-                    coll = check_right(&terrain1map, &asprite);
-                    if(coll == NOCOLL || coll == COLL_RIGHT) {
-                        //asprite.posx++;
-                        //asprite.vposx++;
-                        sprite_right(&asprite, 1, 512);
-                    }
-                    break;
-                case BUTTON_UP:
-                    //VDP_drawTextBG(VDP_PLAN_A,"UP    ",0x8000,1,1);
-                    coll = check_up(&terrain1map, &asprite);
-                    if(coll == NOCOLL || coll == COLL_UP) {
-                        sprite_up(&asprite, 1, 512);
-                        //asprite.posy--;
-                        //asprite.vposy--;
-                    }
-                    break;
-                case BUTTON_DOWN:
-                    //VDP_drawTextBG(VDP_PLAN_A,"DOWN  ",0x8000,1,1);
-                    coll = check_down(&terrain1map, &asprite);
-                    if(coll == NOCOLL || coll == COLL_DOWN) {
-                        sprite_down(&asprite, 1, 512);
-                        //asprite.posy++;
-                        //asprite.vposy++;
-                    }
-                    break;
-            }
-            
-            //check_t_collision(lista, 1, &terrain1map, t_coll_callback);
-            bitmask &= ~mask;
-            mask <<= 1;
+        //int mask = 1;
+        //u16 bitmask = state;
+        //u8 coll = 0;
+       
+        if((state & BUTTON_UP) && (state &  BUTTON_RIGHT)) {
+            asprite.direction = 32;
+            asprite.force = 1;
+        } else if ((state & BUTTON_DOWN) && (state & BUTTON_RIGHT)) {
+            asprite.direction = 96;
+            asprite.force = 1;
+        } else if ((state & BUTTON_DOWN) && (state & BUTTON_LEFT)) {
+            asprite.direction = 160;
+            asprite.force = 1;
+        } else if ((state & BUTTON_UP) && (state & BUTTON_LEFT)) {
+            asprite.direction = 224;
+            asprite.force = 1;
+        } else if((state & BUTTON_UP)) {
+            asprite.direction = 0;
+            asprite.force = 1;
+        } else if ((state & BUTTON_RIGHT)) {
+            asprite.direction = 64;
+            asprite.force = 1;
+        } else if ((state & BUTTON_DOWN)) {
+            asprite.direction = 128;
+            asprite.force = 1;
+        } else if ((state & BUTTON_LEFT)) {
+            asprite.direction = 192;
+            asprite.force = 1;
         }
-        uintToStr(coll, str, 2);
-        BMP_drawText(str, 12, 4);
-        //VDP_setSpriteP(asprite_idx, &asprite);
-
     }
 }
+
+void move_sprite(spritedef* sprt) {
+    switch(sprt->direction) {
+        case 0:
+            // UP
+            sprite_up(sprt,sprt->force,512);
+            break;
+        case 32:
+            // UP RIGHT
+            sprite_up(sprt,sprt->force,512);
+        case 64:
+            // RIGHT
+            sprite_right(sprt,sprt->force,512);
+            break;
+        case 96:
+            // DOWN RIGHT
+            sprite_right(sprt,sprt->force,512);
+        case 128:
+            // DOWN
+            sprite_down(sprt,sprt->force,512);
+            break;
+        case 160:
+            // DOWN LEFT
+            sprite_down(sprt,sprt->force,512);
+        case 192:
+            // LEFT
+            sprite_left(sprt,sprt->force,512);
+            break;
+        case 224:
+            // UP LEFT
+            sprite_left(sprt,sprt->force,512);
+            sprite_up(sprt,sprt->force,512);
+            break;
+
+    }
+    sprt->force = 0;
+}
+
+
+void move_sprites() {
+    u8 cur_idx = 0;
+    u8 next_idx = 0;
+    spritedef* tsprite;
+
+    while(1) {
+        tsprite = _sprite_all[cur_idx];
+        if(tsprite->force != 0) {
+            move_sprite(tsprite);
+        }
+        next_idx = _sprite_all[cur_idx]->link;
+        if(next_idx == 0) {
+            break;
+        }
+        cur_idx = next_idx;
+    }
+}
+
 
 int main() {
     
@@ -172,59 +232,33 @@ int main() {
     listb[0] = bsprite_idx;
     listb[1] = csprite_idx;
 
-    uintToStr(asprite_idx, str, 2);
-    BMP_drawText(str, 2, 2);
-    //uintToStr(bsprite_idx, str, 2);
-    //BMP_drawText(str, 2, 3);
-    //VDP_setSpriteP(asprite_idx, &asprite);
-    //VDP_setSpriteP(bsprite_idx, &bsprite);
-
-    /*
-    int i;
-    for(i=0;i<8;i++){
-        center_screen(&terrain1map, asprite_idx, &hs, &vs); 
-        //VDP_updateSprites();
-        VDP_waitVSync();
-    }
-    */
-
+    //uintToStr(asprite_idx, str, 2);
+    //BMP_drawText(str, 2, 2);
 
     while(1) {
+        // Keep screen centered around a sprite
         center_screen(&terrain1map, asprite_idx, &hs, &vs); 
-        /*
-        uintToStr(asprite.vposy, str, 3);
-        BMP_drawText(str, 6, 0);
-        uintToStr(asprite.vposx, str, 3);
-        BMP_drawText(str, 10, 0);
-        uintToStr(asprite.posy, str, 3);
-        BMP_drawText(str, 14, 2);
-        uintToStr(asprite.posx, str, 3);
-        BMP_drawText(str, 18, 2);
-        uintToStr(terrain1map.winX, str, 2);
-        BMP_drawText(str, 0, 1);
-        uintToStr(terrain1map.winY, str, 2);
-        BMP_drawText(str, 3, 1);
-        uintToStr(terrain1map.tX, str, 2);
-        BMP_drawText(str, 6, 1);
-        uintToStr(terrain1map.tY, str, 2);
-        BMP_drawText(str, 9, 1);
-        */
-
-        //check_collision();
-        //vscroll_sprites(-2);
+        
+        // Get joystick input
         myJoyHandler(JOY_1,0,JOY_readJoypad(JOY_1));
-    
+
+        // Check for primary sprite collisions
+        check_t_collision(lista, 1, &terrain1map, t_coll_callback);
+
         if(spr_coll == 1) {
             //VDP_drawText(" VDP COLLIS    ", 20,19);
+            // If we have any VDP collision, dig deeper
             check_collision(lista, 1,  listb, 2, coll_callback);
             spr_coll = 0;
-        } 
+        }
+        // Check other sprite collisions 
         check_t_collision(listb, 2, &terrain1map, t_coll_callback);
-        //VDP_updateSprites();
+
+        // Move all sprites to new positions
+        move_sprites(); 
+
         VDP_showFPS(0);
         VDP_waitVSync();
-        //VDP_setSpriteP(asprite_idx, &asprite);
-        //VDP_setSpriteP(bsprite_idx, &bsprite);
     }
 
     return 0;

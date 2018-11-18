@@ -18,9 +18,9 @@ void blastmap_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, VDPPlan plane)
 u8 check_up(blastmap* bmap, spritedef* sprite) {
     //char str[10];
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->vposy) % 8) != 0) {
-        return 0;
-    }
+    //if(((sprite->vposy) % 8) != 0) {
+    //    return 0;
+    //}
     // Need to consider wrap-around 
     u16 tile_row = (sprite->vposy - 1) / 8;
 
@@ -34,9 +34,9 @@ u8 check_up(blastmap* bmap, spritedef* sprite) {
 u8 check_down(blastmap* bmap, spritedef* sprite) {
     //char str[10];
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->vposy) % 8) != 0) {
-        return 0;
-    }
+    //if(((sprite->vposy) % 8) != 0) {
+    //    return 0;
+    //}
     
     u16 tile_row = (sprite->vposy / 8) + sprite->tile_height;
 
@@ -119,9 +119,9 @@ u8 check_row(blastmap* bmap, spritedef* sprite, u8 tile_col) {
 u8 check_left(blastmap* bmap, spritedef* sprite) {
     //char str[10];
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->vposx) % 8) != 0) {
-        return 0;
-    }
+    //if(((sprite->vposx) % 8) != 0) {
+    //    return 0;
+    //}
     // 
     u16 tile_col = (sprite->vposx - 1) / 8;
     if(tile_col >= bmap->mapw) {
@@ -134,9 +134,9 @@ u8 check_right(blastmap* bmap, spritedef* sprite) {
     //char str[10];
     
     // Check if we are at a tile boundary, if not skip.
-    if(((sprite->vposx) % 8) != 0) {
-        return 0;
-    }
+    //if(((sprite->vposx) % 8) != 0) {
+    //    return 0;
+    //}
 
     u16 tile_col = (sprite->vposx / 8) + sprite->tile_width;
     // Check wrap-around 
