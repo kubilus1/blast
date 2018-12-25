@@ -12,7 +12,8 @@ RM = rm -f
 ASMZ80 = $(GENBIN)/sjasm 
 BINTOS = $(GENBIN)/bintos 
 
-OPTION= -Dnologo_ --save-temps -fverbose-asm -g 
+#OPTION= -Dnologo_ --save-temps -fverbose-asm -g 
+OPTION= -Dnologo_ -fverbose-asm -g 
 
 CS=$(wildcard libs/*.c)
 SS=$(wildcard libs/*.s)

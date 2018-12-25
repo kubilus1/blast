@@ -116,8 +116,12 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
     sprite->steps = steps;
     sprite->tilesize = w*h;
     sprite->pal = pal;
+    
+
+    // This doesn't appear to be correct after moving screen
     sprite->vposx = x + hs;
     sprite->vposy = y + vs;
+    
     sprite->idx = add_sprite(sprite);
     //sprite->coll_list = coll_list;
     
@@ -452,6 +456,9 @@ void check_t_collision(u8* slist, u8 list_len, blastmap* map, void (*callback)(s
         sprt = _sprite_all[slist[i]];
         coll = 0;
 
+
+
+        /*
         // Check diagonals
         switch(sprt->direction) {
             case 32:
@@ -512,7 +519,7 @@ void check_t_collision(u8* slist, u8 list_len, blastmap* map, void (*callback)(s
         }
         if(coll != 0) {
             (*callback) (sprt, coll);
-        }
+        }*/
     }
     
 }
@@ -554,6 +561,54 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
     //lista_len = 1;
     //listb_len = 2;
     
+
+    VDP_drawText("             ", 20,20);
+    VDP_drawText("             ", 20,21);
+    for(a_idx=0; a_idx < lista_len; a_idx++) {
+        // For each sprite_a in lista
+        sprite_a = _sprite_all[lista[a_idx]];
+        
+        if((sprite_a->row_mask & coll_row_mask) == 0) {
+            // If not on a row with a collision, skip
+            continue;
+        }
+
+        // Row collision
+        VDP_drawText("Row Coll     ", 20,20);
+
+        for(b_idx=0; b_idx < listb_len; b_idx++) {
+            // For each sprite_b in listb
+
+            sprite_b = _sprite_all[listb[b_idx]]; 
+
+            if((sprite_b->row_mask & coll_row_mask) == 0) {
+                // If not on a row with a collision, skip
+                continue;
+            }
+        
+            for(a_col_idx=0; a_col_idx < MAX_SPRITE_COL; a_col_idx++) {
+            // For each column of sprite_a
+            //
+                for(b_col_idx=0; b_col_idx < MAX_SPRITE_COL; b_col_idx++) {
+                    // For each colum of spriteb
+
+                    if(sprite_a->columns[a_col_idx] == sprite_b->columns[b_col_idx]) {
+                        // Collision!
+                        VDP_drawText("COLLISION!!     ", 20,21);
+                        // Do a callback
+                        (*callback) (sprite_a, sprite_b);
+                        //sprite_b->pal = PAL1;
+                        //sprite_b->posx-=2;
+                    }
+                }
+            }
+        }
+    }
+    // Clear collision mask
+    coll_row_mask = 0;
+
+
+
 #ifdef nope
     VDP_drawText("             ", 30,17);
     VDP_drawText("             ", 30,18);
@@ -578,53 +633,6 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
     }
 #endif
 
-
-    //VDP_drawText("             ", 20,20);
-    //VDP_drawText("             ", 20,21);
-    for(a_idx=0; a_idx < lista_len; a_idx++) {
-        // For each sprite_a in lista
-        sprite_a = _sprite_all[lista[a_idx]];
-        
-        if((sprite_a->row_mask & coll_row_mask) == 0) {
-            // If not on a row with a collision, skip
-            continue;
-        }
-
-        // Row collision
-        //VDP_drawText("Row Coll     ", 20,20);
-
-
-
-        for(b_idx=0; b_idx < listb_len; b_idx++) {
-            // For each sprite_b in listb
-
-            sprite_b = _sprite_all[listb[b_idx]]; 
-
-            if((sprite_b->row_mask & coll_row_mask) == 0) {
-                // If not on a row with a collision, skip
-                continue;
-            }
-        
-            for(a_col_idx=0; a_col_idx < MAX_SPRITE_COL; a_col_idx++) {
-            // For each column of sprite_a
-            //
-                for(b_col_idx=0; b_col_idx < MAX_SPRITE_COL; b_col_idx++) {
-                    // For each colum of spriteb
-
-                    if(sprite_a->columns[a_col_idx] == sprite_b->columns[b_col_idx]) {
-                        // Collision!
-                        //VDP_drawText("COLLISION!!     ", 20,21);
-                        // Do a callback
-                        (*callback) (sprite_a, sprite_b);
-                        //sprite_b->pal = PAL1;
-                        //sprite_b->posx-=2;
-                    }
-                }
-            }
-        }
-    }
-    // Clear collision mask
-    coll_row_mask = 0;
 }
 
 #ifdef BAR

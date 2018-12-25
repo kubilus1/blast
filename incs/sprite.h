@@ -57,6 +57,11 @@ typedef struct _spritedef
     u8 force;
     //u8 col_group;
 
+
+    s8 x_vec;
+    s8 y_vec;
+
+
     u8 columns[MAX_SPRITE_COL];
     u32 column_mask;
     u32 row_mask;

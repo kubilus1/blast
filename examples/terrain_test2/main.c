@@ -3,6 +3,7 @@
 
 #include "images.h"
 #include "terrain_map1.h"
+#include "math_tables.h"
 
 u16 terrain_tile_offset = 0;
 blastmap terrain1map;
@@ -68,9 +69,29 @@ void do_coll(spritedef* sprta, spritedef* sprtb) {
     //sprta->force = 0;
 }
 void terrain_coll(spritedef* sprt, u8 coll) {
+    // Some kind of terrain collision detected
     VDP_drawText(" T COLLIS    ", 2,2);
+    return;
+
+    switch(coll) {
+        case COLL_UP:
+            // Collision allows up
+            break;
+        case COLL_RIGHT:
+            // Collision allows right
+            break;
+        case COLL_DOWN:
+            // Collision allows down
+            break;
+        case COLL_LEFT:
+            // Collision allows left
+            break;
+
+    }
+
     switch(sprt->direction) {
         case 0:
+            // Going up
             if(coll != COLL_UP)
                 sprt->force = 0;
             break;
@@ -103,16 +124,16 @@ void myJoyHandler(u16 joy, u16 changed, u16 state) {
        
         if((state & BUTTON_UP) && (state &  BUTTON_RIGHT)) {
             asprite.direction = 32;
-            asprite.force = 1;
+            asprite.force = 2;
         } else if ((state & BUTTON_DOWN) && (state & BUTTON_RIGHT)) {
             asprite.direction = 96;
-            asprite.force = 1;
+            asprite.force = 2;
         } else if ((state & BUTTON_DOWN) && (state & BUTTON_LEFT)) {
             asprite.direction = 160;
-            asprite.force = 1;
+            asprite.force = 2;
         } else if ((state & BUTTON_UP) && (state & BUTTON_LEFT)) {
             asprite.direction = 224;
-            asprite.force = 1;
+            asprite.force = 2;
         } else if((state & BUTTON_UP)) {
             asprite.direction = 0;
             asprite.force = 1;
@@ -128,7 +149,7 @@ void myJoyHandler(u16 joy, u16 changed, u16 state) {
         }
     }
 }
-
+/*
 void move_sprite(spritedef* sprt) {
     switch(sprt->direction) {
         case 0:
@@ -184,7 +205,71 @@ void move_sprites() {
         cur_idx = next_idx;
     }
 }
+*/
+void move_sprite(spritedef* sprt, blastmap* map, void (*callback)(spritedef* sprt, u8 coll)){
+    if(sprt->force == 0)
+        return;
 
+    s8 x_delta;
+    s8 y_delta;
+    u8 coll;
+
+    y_delta = ((sprt->force) * cos_table[sprt->direction])>>6;
+    x_delta = ((sprt->force) * sin_table[sprt->direction])>>6;
+
+    if(x_delta>0) {
+        coll = check_right(map, sprt);
+        if(coll == NOCOLL || coll == COLL_RIGHT)  
+            sprite_right(sprt, x_delta, 512);
+        else {
+            (*callback)(sprt, coll);
+        }
+    } else if (x_delta<0) {
+        coll = check_left(map, sprt);
+        if(coll == NOCOLL || coll == COLL_LEFT)
+            sprite_left(sprt, x_delta*-1, 512);
+        else {
+            (*callback)(sprt, coll);
+        }
+    }
+
+    if(y_delta>0) {
+        coll = check_up(map, sprt);
+        if(coll == NOCOLL || coll == COLL_UP)
+            sprite_up(sprt, y_delta, 512);
+        else {
+            (*callback)(sprt, coll);
+        }
+    } else if (y_delta<0) {
+        coll = check_down(map, sprt);
+        if(coll == NOCOLL || coll == COLL_DOWN)
+            sprite_down(sprt, y_delta*-1, 512);
+        else {
+            (*callback)(sprt, coll);
+        }
+    }
+
+    sprt->force -= 1;
+    //sprt->force = sprt->force>>1;
+}
+
+void move_sprites(blastmap* map, void (*callback)(spritedef* sprt, u8 coll)) {
+    u8 cur_idx = 0;
+    u8 next_idx = 0;
+    spritedef* tsprite;
+
+    while(1) {
+        tsprite = _sprite_all[cur_idx];
+        if(tsprite->force != 0) {
+            move_sprite(tsprite, map, (*callback));
+        }
+        next_idx = _sprite_all[cur_idx]->link;
+        if(next_idx == 0) {
+            break;
+        }
+        cur_idx = next_idx;
+    }
+}
 
 int main() {
     
@@ -243,7 +328,7 @@ int main() {
         myJoyHandler(JOY_1,0,JOY_readJoypad(JOY_1));
 
         // Check for primary sprite collisions
-        check_t_collision(lista, 1, &terrain1map, t_coll_callback);
+        //check_t_collision(lista, 1, &terrain1map, t_coll_callback);
 
         if(spr_coll == 1) {
             //VDP_drawText(" VDP COLLIS    ", 20,19);
@@ -252,10 +337,10 @@ int main() {
             spr_coll = 0;
         }
         // Check other sprite collisions 
-        check_t_collision(listb, 2, &terrain1map, t_coll_callback);
+        //check_t_collision(listb, 2, &terrain1map, t_coll_callback);
 
         // Move all sprites to new positions
-        move_sprites(); 
+        move_sprites(&terrain1map, t_coll_callback); 
 
         VDP_showFPS(0);
         VDP_waitVSync();
