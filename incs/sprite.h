@@ -10,6 +10,19 @@
 #define MAX_SPRITE_COL 2
 #define MAX_SPRITE_ROW 2
 
+typedef int bool;
+
+typedef struct _vec2 {
+    s16 x;
+    s16 y;
+} vec2;
+
+// Axis aligned bounding box
+typedef struct _AABB {
+    vec2 min;
+    vec2 max;
+} AABB;
+
 typedef struct _spritedef
 {
     // Position on plane?
@@ -67,8 +80,18 @@ typedef struct _spritedef
     u32 row_mask;
     u8 rows[MAX_SPRITE_ROW];
 
+    // Sprites axis aligned bounding box
+    AABB aabb;
+    fix16 inv_mass;
+    vec2 velocity;
+
     //u8* coll_list;
 } spritedef;
+
+typedef struct _manifold {
+    u16 penetration;
+    vec2 normal; 
+} manifold;
 
 u8 spr_col [40];
 u8 spr_row [28];
@@ -112,5 +135,10 @@ void check_t_collision(u8* lista, u8 lista_len, blastmap* map, void (*callback)(
 void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*callback)(spritedef* sprta, spritedef* sprtb));
 void BLAST_updateSprites(); 
 void BLAST_setSpriteP(u16 index, const spritedef *sprite);
+void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m);
+bool get_manifold(spritedef* a, spritedef* b, manifold *m);
+void move_sprite(spritedef* sprt, blastmap* map, void (*callback)(spritedef* insprt, u8 coll));
+void move_sprites(blastmap* map, void (*callback)(spritedef* sprt, u8 coll));
+void drag_sprites();
 
 #endif

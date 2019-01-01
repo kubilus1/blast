@@ -7,6 +7,10 @@
 #ifndef _BLAST
 #define _BLAST
 
+typedef int bool;
+#define true 1
+#define false 0
+
 void vblank();
 void hblank();
 void blast_init();

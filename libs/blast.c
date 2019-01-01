@@ -19,9 +19,9 @@ void hblank() {
         //int i;
         //VDP_drawText(" COL ", 22, 20);
         //VDP_drawText(" COL ", 22, 20);
-        const u16 vcnt = GET_VCOUNTER;
+        //const u16 vcnt = GET_VCOUNTER;
 
-        coll_row_mask |= 1U << (vcnt/8);
+        coll_row_mask |= 1U << (GET_VCOUNTER/8);
 
         //coll_vcnt = GET_VCOUNTER;
         //coll_row[ vcnt/8 ] = 1;

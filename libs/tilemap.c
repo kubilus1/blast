@@ -50,7 +50,6 @@ u8 check_down(blastmap* bmap, spritedef* sprite) {
 }
 
 u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
-    char str[10];
     u8 coll;
     u8 i;
     u16 tile;
@@ -63,11 +62,14 @@ u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
         numcols++;
     }
 
+#ifdef DEBUG
+    char str[10];
     uintToStr(tile_col, str, 2);
     //BMP_drawText(str, 0, 6);
     uintToStr(tile_row, str, 2);
     //BMP_drawText(str, 3, 6);
-   
+#endif 
+
     coll = 0;
     for(i=0; i < numcols; i++, tile_col++) {
 
@@ -83,7 +85,6 @@ u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
 }
 
 u8 check_row(blastmap* bmap, spritedef* sprite, u8 tile_col) {
-    char str[10];
     u8 coll;
     u8 i;
     u16 tile;
@@ -96,10 +97,13 @@ u8 check_row(blastmap* bmap, spritedef* sprite, u8 tile_col) {
         numrows++;
     }
 
+#ifdef DEBUG
+    char str[10];
     uintToStr(tile_col, str, 2);
     //BMP_drawText(str, 0, 6);
     uintToStr(tile_row, str, 2);
     //BMP_drawText(str, 3, 6);
+#endif
 
     coll = 0;
     for(i=0; i < numrows; i++, tile_row++) {

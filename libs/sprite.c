@@ -80,6 +80,7 @@ void BLAST_updateSprites()
 }
 
 void sprite_setrowcol(spritedef* sprite) {
+    
     sprite->columns[0] = sprite->posx/8;
     sprite->columns[1] = (sprite->posx + sprite->width)/8;
     //sprite->rows[0] = sprite->posy/8;
@@ -156,8 +157,220 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
     uintToStr((sprite->posx/8)+i,abuf,3);
     VDP_drawText(abuf, 14, 16+sprite->idx);
     */
+    sprite->aabb.min.x = x;
+    sprite->aabb.min.y = y;
+    sprite->aabb.max.x = (w*8)+x;
+    sprite->aabb.max.y = (h*8)+y;
+
+    sprite->inv_mass = FIX16(0.1);
+    sprite->velocity.x = 0;
+    sprite->velocity.y = 0;
+
+
+
     return sprite->idx;
 }
+
+
+bool check_aabb(AABB a, AABB b) {
+    // Exit with no intersection if found separated along an axis
+    if(a.max.x < b.min.x || a.min.x > b.max.x) return false;
+    if(a.max.y < b.min.y || a.min.y > b.max.y) return false;
+        
+    // No separating axis found, therefor there is at least one overlapping axis
+    return true;
+}
+
+bool get_manifold(spritedef* a, spritedef* b, manifold *m) {
+    vec2 n;
+    n.x = b->posx - a->posx;
+    n.y = b->posy - a->posy;
+
+    AABB abox = a->aabb;
+    AABB bbox = b->aabb;
+
+    u16 a_extent = (abox.max.x - abox.min.x)>>1;
+    u16 b_extent = (bbox.max.x - bbox.min.x)>>1;
+
+    u16 x_overlap = a_extent + b_extent - abs(n.x);
+
+    if(x_overlap > 0) {
+
+        a_extent = (abox.max.y - abox.min.y)>>1;
+        b_extent = (bbox.max.y - bbox.min.y)>>1;
+
+        u16 y_overlap = a_extent + b_extent - abs(n.y);
+        if(y_overlap > 0) {
+            if(x_overlap < y_overlap) {
+                //VDP_drawText(" X min ", 14, 19);
+                if(n.x < 0){
+                    m->normal.x = -1;
+                    m->normal.y = 0;
+                } else {
+                    m->normal.x = 1;
+                    m->normal.y = 0;
+                }
+                m->penetration = x_overlap;
+            } else {
+                //VDP_drawText(" Y min  ", 14, 19);
+                if(n.y < 0) {
+                    //VDP_drawText(" y>0 ", 19, 18);
+                    m->normal.x = 0;
+                    m->normal.y = -1;
+                } else {
+                    //VDP_drawText(" y>0 ", 19, 18);
+                    m->normal.x = 0;
+                    m->normal.y = 1;
+                }
+                m->penetration = y_overlap;
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//#define TESTCOLL 1
+
+void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m) {
+#ifdef TESTCOLL
+    if ( sprt_a->velocity.y == 0 ){
+        return;
+    }
+#endif
+    vec2 rv;
+
+    rv.x = sprt_b->velocity.x - sprt_a->velocity.x;
+    rv.y = sprt_b->velocity.y - sprt_a->velocity.y;
+ 
+#ifdef DEBUG   
+    intToStr(rv.x,abuf,3);
+    VDP_drawText(abuf, 14,15);
+    intToStr(rv.y,abuf,3);
+    VDP_drawText(abuf, 14,16);
+#endif
+
+    s16 vel_normal = ((rv.x * m->normal.x) + (rv.y * m->normal.y));
+
+#ifdef DEBUG
+    intToStr(vel_normal,abuf,3);
+    VDP_drawText(abuf, 14,17);
+#endif 
+
+    if(vel_normal > 0) {
+#ifdef DEBUG
+        VDP_drawText(" SKIP  ", 19, 16);
+#endif
+#ifdef TESTCOLL
+        intToStr(sprt_a->velocity.x,abuf,3);
+        VDP_drawText(abuf, 14,21);
+        intToStr(sprt_a->velocity.y,abuf,3);
+        VDP_drawText(abuf, 14,22);
+
+        intToStr(sprt_b->velocity.x,abuf,3);
+        VDP_drawText(abuf, 14,23);
+        intToStr(sprt_b->velocity.y,abuf,3);
+        VDP_drawText(abuf, 14,24);
+        sprt_a->velocity.x = 0;
+        sprt_a->velocity.y = 0;
+        sprt_b->velocity.x = 0;
+        sprt_b->velocity.y = 0;
+#endif 
+        //VDP_drawText(" SKIP  ", 19, 17);
+        return;
+    }
+    // Restitution == bounciness
+    //u16 e = 1;
+
+    fix16 j = fix16Mul(FIX16(-1.4), intToFix16(vel_normal));
+   
+    //fix16 a_inv_mass = fix16Div(FIX16(1), intToFix16(sprt_a->mass));
+    //fix16 b_inv_mass = fix16Div(FIX16(1), intToFix16(sprt_b->mass));
+    //fix16 a_inv_mass = FIX16(0.5);
+    //fix16 b_inv_mass = FIX16(0.5);
+
+    // j /= (1/a.mass + 1/b.mass);
+    j = fix16Div(j, fix16Add(sprt_a->inv_mass, sprt_b->inv_mass));
+    //j = -2; 
+    //
+
+#ifdef DEBUG
+    intToStr(fix16ToInt(j),abuf,3);
+    VDP_drawText(abuf, 14,18);
+    intToStr(m->normal.x,abuf,3);
+    VDP_drawText(abuf, 14,19);
+    intToStr(m->normal.y,abuf,3);
+    VDP_drawText(abuf, 14,20);
+#endif
+
+    //j = j>>6;
+    //u16 mass_sum = sprt_a->mass + sprt_b->mass;
+
+    vec2 impulse;
+    impulse.x = fix16ToInt(fix16Mul(j, intToFix16(m->normal.x)));
+    impulse.y = fix16ToInt(fix16Mul(j, intToFix16(m->normal.y)));
+
+    /* Max impulse */
+    impulse.x = min(impulse.x, 256);
+    impulse.x = max(impulse.x, -256);
+    impulse.y = min(impulse.y, 256);
+    impulse.y = max(impulse.y, -256);
+    /*
+    if (impulse.x > 256 || impulse.y > 256) {
+        VDP_drawText("BOUNDS EXCEEDED", 14, 17);
+    }
+    */
+#ifdef DEBUG
+    intToStr(impulse.x,abuf,3);
+    VDP_drawText(abuf, 19,16);
+    intToStr(impulse.y,abuf,3);
+    VDP_drawText(abuf, 19,17);
+#endif
+
+    //u16 mass_sum = sprt_a->mass + sprt_b->mass;
+    //u8 ratio = sprt_a->mass / mass_sum;
+   
+    sprt_a->velocity.x -= fix16ToInt(fix16Mul(intToFix16(impulse.x), sprt_a->inv_mass));
+    sprt_a->velocity.y -= fix16ToInt(fix16Mul(intToFix16(impulse.y), sprt_a->inv_mass));
+
+    sprt_b->velocity.x += fix16ToInt(fix16Mul(intToFix16(impulse.x), sprt_b->inv_mass));
+    sprt_b->velocity.y += fix16ToInt(fix16Mul(intToFix16(impulse.y), sprt_b->inv_mass));
+   
+#ifdef DEBUG
+    intToStr(sprt_a->velocity.x,abuf,3);
+    VDP_drawText(abuf, 14,21);
+    intToStr(sprt_a->velocity.y,abuf,3);
+    VDP_drawText(abuf, 14,22);
+
+    intToStr(sprt_b->velocity.x,abuf,3);
+    VDP_drawText(abuf, 14,23);
+    intToStr(sprt_b->velocity.y,abuf,3);
+    VDP_drawText(abuf, 14,24);
+#endif 
+#ifdef TESTCOLL
+    sprt_a->velocity.x = 0;
+    sprt_a->velocity.y = 0;
+    sprt_b->velocity.x = 0;
+    sprt_b->velocity.y = 0;
+#endif 
+
+
+    sprt_a->velocity.x = min(sprt_a->velocity.x, 256);
+    sprt_a->velocity.x = max(sprt_a->velocity.x, -256);
+    sprt_a->velocity.y = min(sprt_a->velocity.y, 256);
+    sprt_a->velocity.y = max(sprt_a->velocity.y, -256);
+    //ratio = sprt_b->mass / mass_sum;
+    
+    sprt_b->velocity.x = min(sprt_b->velocity.x, 256);
+    sprt_b->velocity.x = max(sprt_b->velocity.x, -256);
+    sprt_b->velocity.y = min(sprt_b->velocity.y, 256);
+    sprt_b->velocity.y = max(sprt_b->velocity.y, -256);
+    
+    return;
+}
+
+
 
 
 // Probably just have a universal direction setter.
@@ -165,6 +378,8 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
 void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
     //int i;
     sprt->posx-=amnt;
+    sprt->aabb.min.x-=amnt;
+    sprt->aabb.max.x-=amnt;
     //sprt->direction=192;
 
     /*
@@ -207,6 +422,8 @@ void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
 void sprite_right(spritedef *sprt, u8 amnt, u16 max) {
     //int i;
     sprt->posx+=amnt;
+    sprt->aabb.min.x+=amnt;
+    sprt->aabb.max.x+=amnt;
     //sprt->direction=64;
     sprite_setrowcol(sprt);
 
@@ -243,6 +460,8 @@ void sprite_right(spritedef *sprt, u8 amnt, u16 max) {
 }
 void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy-=amnt;
+    sprt->aabb.min.y-=amnt;
+    sprt->aabb.max.y-=amnt;
     //sprt->direction=0;
     sprite_setrowcol(sprt);
     //uintToStr((sprt->posy),abuf,3);
@@ -263,6 +482,8 @@ void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
 }
 void sprite_down(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy+=amnt;
+    sprt->aabb.min.y+=amnt;
+    sprt->aabb.max.y+=amnt;
     //sprt->direction=128;
     sprite_setrowcol(sprt);
     //uintToStr((sprt->posy),abuf,3);
@@ -524,6 +745,11 @@ void check_t_collision(u8* slist, u8 list_len, blastmap* map, void (*callback)(s
     
 }
 
+void do_noop(){
+    u8 dummy = 0;
+    return;
+}
+
 void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*callback)(spritedef* sprta, spritedef* sprtb)){
 
     /*
@@ -546,24 +772,17 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
     u8 a_col_idx;
     u8 b_col_idx;
 
-    //u8 lista_len;
-    //u8 listb_len;
-    
-    u32 column_collision;
+    u32 column_collision = 0;
     u32 row_collision;
 
     spritedef* sprite_a;
     spritedef* sprite_b;
-
-    //lista_len = sizeof(lista)/8;
-    //listb_len = sizeof(listb)/8;
-
-    //lista_len = 1;
-    //listb_len = 2;
+    manifold* coll_manifold;
     
-
+#ifdef DEBUG
     VDP_drawText("             ", 20,20);
     VDP_drawText("             ", 20,21);
+#endif
     for(a_idx=0; a_idx < lista_len; a_idx++) {
         // For each sprite_a in lista
         sprite_a = _sprite_all[lista[a_idx]];
@@ -572,14 +791,18 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
             // If not on a row with a collision, skip
             continue;
         }
-
+#ifdef DEBUG
         // Row collision
         VDP_drawText("Row Coll     ", 20,20);
-
+#endif 
         for(b_idx=0; b_idx < listb_len; b_idx++) {
             // For each sprite_b in listb
 
             sprite_b = _sprite_all[listb[b_idx]]; 
+            if(sprite_b->idx == sprite_a->idx) {
+                // Don't check sprite against itself!
+                continue;
+            }
 
             if((sprite_b->row_mask & coll_row_mask) == 0) {
                 // If not on a row with a collision, skip
@@ -593,12 +816,16 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
                     // For each colum of spriteb
 
                     if(sprite_a->columns[a_col_idx] == sprite_b->columns[b_col_idx]) {
-                        // Collision!
-                        VDP_drawText("COLLISION!!     ", 20,21);
-                        // Do a callback
-                        (*callback) (sprite_a, sprite_b);
-                        //sprite_b->pal = PAL1;
-                        //sprite_b->posx-=2;
+                        if(check_aabb(sprite_a->aabb, sprite_b->aabb)) {
+                            // Collision!
+                            // Do a callback
+                            //column_collision += 1;
+                            //do_noop();
+                            (*callback) (sprite_a, sprite_b);
+                            //if(get_manifold(sprite_a, sprite_b, coll_manifold)) {
+                                //sprite_bounce(sprite_a, sprite_b, coll_manifold);
+                            //}
+                        }
                     }
                 }
             }
@@ -606,188 +833,103 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
     }
     // Clear collision mask
     coll_row_mask = 0;
-
-
-
-#ifdef nope
-    VDP_drawText("             ", 30,17);
-    VDP_drawText("             ", 30,18);
-    for(a_idx=0; a_idx < lista_len; a_idx++) {
-        sprite_a = _sprite_all[a_idx];
-
-        for(b_idx=0; b_idx < listb_len; b_idx++) {
-            sprite_b = _sprite_all[b_idx];
-
-            column_collision = sprite_a->column_mask & sprite_b->column_mask;
-            if(column_collision != 0) {
-                // Column collision
-                
-                VDP_drawText("Column Coll   ", 30,17);
-                for(a_row_idx=0; a_row_idx < MAX_SPRITE_ROW; a_row_idx++){
-                    if(coll_row[sprite_a->rows[a_row_idx]] == 0xFF) {
-                        VDP_drawText("COLLISION    ", 30,18);
-                    }    
-                }
-            }
-        }
-    }
-#endif
-
 }
 
-#ifdef BAR
-void check_collision(u8 groupa, u8 groupb) {
-    // Check for collisions between two groups
+
+void move_sprite(spritedef* sprt, blastmap* map, void (*callback)(spritedef* insprt, u8 coll)){
+    if((sprt->velocity.x == 0) && (sprt->velocity.y == 0))
+        return;
+
+    u8 coll = 0;
+    if(sprt->velocity.x>0) {
+        coll = check_right(map, sprt);
+        if(coll == NOCOLL || coll == COLL_RIGHT) {
+            sprite_right(sprt, (sprt->velocity.x>>6), 512);
+            //sprt->velocity.x -= 1;
+        } else {
+            sprt->velocity.x *= -1;    
+            (*callback)(sprt, coll);
+        }
+    } else if (sprt->velocity.x<0) {
+        coll = check_left(map, sprt);
+        if(coll == NOCOLL || coll == COLL_LEFT) {
+            sprite_left(sprt, ((sprt->velocity.x*-1)>>6), 512);
+            //sprt->velocity.x += 1;
+        } else {
+            sprt->velocity.x *= -1;    
+            (*callback)(sprt, coll);
+        }
+    }
+
+    if(sprt->velocity.y<0) {
+        coll = check_up(map, sprt);
+        if(coll == NOCOLL || coll == COLL_UP) {
+            sprite_up(sprt, (abs(sprt->velocity.y)>>6), 512);
+            //sprt->velocity.y -= 1;
+        } else {
+            sprt->velocity.y *= -1;
+            (*callback)(sprt, coll);
+        }
+    } else if (sprt->velocity.y>0) {
+        coll = check_down(map, sprt);
+        if(coll == NOCOLL || coll == COLL_DOWN) {
+            sprite_down(sprt, (sprt->velocity.y>>6), 512);
+            sprt->velocity.y += 1;
+        } else {
+            sprt->velocity.y *= -1;
+            (*callback)(sprt, coll);
+        }
+    }
+
+    //sprt->force -= 1;
+    //sprt->force = sprt->force>>1;
+}
+
+void move_sprites(blastmap* map, void (*callback)(spritedef* sprt, u8 coll)) {
+    u8 cur_idx = 0;
+    u8 next_idx = 0;
+    spritedef* tsprite;
+
+    while(1) {
+        tsprite = _sprite_all[cur_idx];
+        //if(tsprite->force != 0) {
+        move_sprite(tsprite, map, (*callback));
+        //}
+        next_idx = tsprite->link;
+        if(next_idx == 0) {
+            break;
+        }
+        cur_idx = next_idx;
+    }
+}
 
 
-    for sprite in all_sprites:
+void drag_sprites() {
+    u8 cur_idx = 0;
+    u8 next_idx = 0;
+    spritedef* tsprite;
+
+    u8 drag = 1;
+
+    while(1) {
+        tsprite = _sprite_all[cur_idx];
         
+        if(tsprite->velocity.x > 0) {
+            tsprite->velocity.x -= drag;
+        } else if (tsprite->velocity.x < 0) {
+            tsprite->velocity.x += drag;
+        }
 
-}
+        if(tsprite->velocity.y > 0) {
+            tsprite->velocity.y -= drag;
+        } else if (tsprite->velocity.y < 0) {
+            tsprite->velocity.y += drag;
+        }
 
-
-void check_collision(u8* lista, u8* listb){
-    
-    for coll_row in coll_rows:
-        if coll_row.collision:
-            for sprite_a in lista:
-               for row in sprite_a.rows:
-                   if row == coll_row:
-                      for coll_col in sprite_a.columns:
-                         for sprite_b in listb:
-                            if sprite_b.column == coll_col:
-                               COLLISION! 
-
-
-
-    for sprite_a in lista:
-        for row in sprite_a.rows:
-            if coll_rows[row] == row_coll:
-                for spritea_col in sprite_a.columns:
-                    for sprite_b in listb:
-                        if sprite_b.column == spritea_col:
-                            COLLISION!
-
-
-    u16 a_idx;
-    u16 b_idx;
-    u8 a_row_idx;
-    u8 a_col_idx;
-    u8 b_col_idx;
-
-    u8 lista_len;
-    u8 listb_len;
-    
-    spritdef* sprite_a;
-    spritdef* sprite_b;
-
-    lista_len = sizeof(lista)/8;
-    listb_len = sizeof(listb)/8;
-
-    for(a_idx=0;a_idx<lista_len;a_idx++) {
-        // For each sprite_a in list_a
-        //
-        sprite_a = _sprite_all[a_idx];
-        for(a_row_idx=0;a_row_idx<MAX_SPRITE_ROW;a_row_idx++){
-            // For each row in sprite_a
-            //
-            if(coll_row[sprite_a->rows[a_row_idx]] == 0xFF) {
-                // Possible row collision
-                //
-                for(a_col_idx=0;a_col_idx<MAX_SPRITE_COL;a_col_idx++){
-                    // For each col in sprite_a
-                    //
-                    for(b_idx=0;b_idx<listb_len;b_idx++){
-                        // For each sprite_b in list_b
-                        //
-                        sprite_b = _sprite_all[b_idx];
-                        for(b_col_idx=0;b_col_idx<MAX_SPRITE_COL;b_col_idx++){
-                            // For each col in sprite_b
-                            if(sprite_b->columns[b_col_idx] == sprite_a->columns[a_col_idx]){
-                                //
-                                //COLLISION
-                                //
-                                //NOTE: may detect multiple collisions for same sprite pair
-                                //
-                            }
-                        }
-                    }
-                }
-            }
-        }   
+        next_idx = tsprite->link;
+        if(next_idx == 0) {
+            break;
+        }
+        cur_idx = next_idx;
     }
 }
-#endif
-
-#ifdef FOO
-void check_collision(u8* lista, u8* listb) {
-//void check_collision(spritedef* sprt, spritdef** spr_list) {
-    int i;
-    int j;
-    int k;
-    char str[10];
-
-    spritedef* sprta;
-    spritedef* sprtb;
-
-    for(i=0;i<40;i++){
-
-        //VDP_drawText(str, 20, 20+i);
-
-        if(lista[i] != 0xFF) {
-
-            //uintToStr(i, str, 3);
-            //VDP_drawText(str, 30,30);
-
-            if(listb[i] != 0xFF) {
-                VDP_drawText("possible Coll", 20,21);
-                // Possible collision on column
-                sprta = _sprite_all[lista[i]];
-
-                // Flaw, sprite may span rows
-                u8 row = sprta->posy/8;
-                if(coll_row[row] != 0) {
-                    // Very likey collision between sprt A and sprt B
-                    VDP_drawText("COLLISION    ", 20,22);
-                    uintToStr(i, str, 3);
-                    VDP_drawText(str, 24, 24);
-                    
-                    uintToStr(row, str, 3);
-                    VDP_drawText(str, 30,22);
-                    coll_row[row] = 0;
-                }
-                /*
-                // Flaw, sprite may span rows
-                u8 row = (sprta->posy+sprta->h)/8;
-                if(coll_row[row] != 0) {
-                    // Very likey collision between sprt A and sprt B
-                    VDP_drawText("COLLISION    ", 20,22);
-                    uintToStr(i, str, 3);
-                    VDP_drawText(str, 24, 24);
-                    
-                    uintToStr(row, str, 3);
-                    VDP_drawText(str, 30,22);
-                    coll_row[row] = 0;
-                }
-                */
-
-            } else {
-                VDP_drawText("               ", 20,21);
-                VDP_drawText("               ", 20,22);
-            }
-        }
-    }
-
-    /*
-    for(i=0;i<28;i++){
-        if(coll_row[i] != 0) {
-            uintToStr(i, str, 3);
-            VDP_drawText(str, 24, 24);
-            //coll_row[i] = 0;
-            //sprt = _sprite_all[i];        
-        }
-    } 
-    */
-}
-
-#endif
