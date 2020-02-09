@@ -1,7 +1,7 @@
 #include "genesis.h"
 #include "blast.h"
 
-void blastmap_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, VDPPlan plane) {
+void blastmap_init(blastmap* bmap, tilemap* tmap, u16* tlookup, u16 tileoffset, VDPPlan plane) {
     bmap->tX = 64; 
     bmap->tY = 64;
     bmap->winX = bmap->tX;
@@ -13,6 +13,10 @@ void blastmap_init(blastmap* bmap, tilemap* tmap, u16 tileoffset, VDPPlan plane)
     bmap->tileoffset = tileoffset;
     bmap->plane = plane;
     bmap->tiles = tmap;
+    bmap->tlookup = tlookup;
+
+    // Set the global foreground map
+    fore_map = bmap;
 }
 
 u8 check_up(blastmap* bmap, spritedef* sprite) {
@@ -62,12 +66,12 @@ u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
         numcols++;
     }
 
-#ifdef DEBUG
+#ifdef DEBUG1
     char str[10];
     uintToStr(tile_col, str, 2);
-    //BMP_drawText(str, 0, 6);
+    VDP_drawText(str, 24, 16);
     uintToStr(tile_row, str, 2);
-    //BMP_drawText(str, 3, 6);
+    VDP_drawText(str, 24, 17);
 #endif 
 
     coll = 0;
@@ -77,8 +81,8 @@ u8 check_col(blastmap* bmap, spritedef* sprite, u8 tile_row) {
             tile_col = 0;
         }
 
-        tile = GET_TILE_XY(bmap, tile_col, tile_row);
-        coll |= bmap->tiles->coll[(tile-1)];
+        tile = GET_COLL_XY(bmap, tile_col, tile_row);
+        coll |= bmap->tiles->coll[(tile-(bmap->tileoffset))];
     }
 
     return coll;
@@ -97,12 +101,12 @@ u8 check_row(blastmap* bmap, spritedef* sprite, u8 tile_col) {
         numrows++;
     }
 
-#ifdef DEBUG
+#ifdef DEBUG1
     char str[10];
     uintToStr(tile_col, str, 2);
-    //BMP_drawText(str, 0, 6);
+    VDP_drawText(str, 24, 16);
     uintToStr(tile_row, str, 2);
-    //BMP_drawText(str, 3, 6);
+    VDP_drawText(str, 24, 17);
 #endif
 
     coll = 0;
@@ -112,9 +116,8 @@ u8 check_row(blastmap* bmap, spritedef* sprite, u8 tile_col) {
             tile_row = 0;
         }
 
-        tile = GET_TILE_XY(bmap, tile_col, tile_row);
-        coll |= bmap->tiles->coll[(tile-1)];
-        
+        tile = GET_COLL_XY(bmap, tile_col, tile_row);
+        coll |= bmap->tiles->coll[(tile - (bmap->tileoffset))];
     }
 
     return coll;
@@ -152,11 +155,11 @@ u8 check_right(blastmap* bmap, spritedef* sprite) {
 
 void screen_left(blastmap* bmap, u16* hScroll) {
     if(*hScroll % 8 == 0) {
-        bmap->tX-=1;
-        bmap->winX-=1;
+        bmap->tX--;
         if(bmap->tX>=bmap->planwidth){
             bmap->tX = bmap->planwidth - 1;
         }
+        bmap->winX--;
         if(bmap->winX>=bmap->mapw) {
             bmap->winX = bmap->mapw - 1;
         }
@@ -168,11 +171,11 @@ void screen_left(blastmap* bmap, u16* hScroll) {
 void screen_right(blastmap* bmap, u16* hScroll) {
     *hScroll-=1;
     if(*hScroll % 8 == 0) {
-        bmap->tX+=1;
-        bmap->winX+=1;
+        bmap->tX++;
         if(bmap->tX>=bmap->planwidth){
             bmap->tX = 0;
         }
+        bmap->winX++;
         if(bmap->winX>=bmap->mapw) {
             bmap->winX = 0;
         }
@@ -185,11 +188,11 @@ void screen_up(blastmap* bmap, u16* vScroll) {
 
     // Check only on tile boundaries 
     if(*vScroll % 8 == 0) {
-        bmap->tY-=1;
-        bmap->winY-=1;
+        bmap->tY--;
         if(bmap->tY>=bmap->planheight){
             bmap->tY = bmap->planheight - 1;
         }
+        bmap->winY--;
         if(bmap->winY>=bmap->maph){
             bmap->winY = bmap->maph - 1;
         }
@@ -201,11 +204,11 @@ void screen_up(blastmap* bmap, u16* vScroll) {
 void screen_down(blastmap* bmap, u16* vScroll) {
     *vScroll+=1;
     if(*vScroll % 8 == 0) {
-        bmap->tY+=1;
-        bmap->winY+=1;
+        bmap->tY++;
         if(bmap->tY>=bmap->planheight){
             bmap->tY = 0;
         }
+        bmap->winY++;
         if(bmap->winY>=bmap->maph){
             bmap->winY = 0;
         }
@@ -217,35 +220,54 @@ void screen_down(blastmap* bmap, u16* vScroll) {
 void center_screen(blastmap* bmap, u16 sprite_idx, u16* hscroll, u16* vscroll) {
     spritedef *tsprite;
     tsprite = _sprite_all[sprite_idx];
-    
-    u8 scroll_factor = 1;
+   
+    //(((a)>(b))?(a):(b))
+    //u8 velmax = (abs(tsprite->velocity.x)>abs(tsprite->velocity.y))?abs(tsprite->velocity.x):abs(tsprite->velocity.y);
+
+    //u8 scroll_factor = ((velmax/32)>0)?(velmax/32):1;
+    u8 i;
+    u8 scroll_factor;
+    //u8 scroll_factor = 1;
 
     //128x104
     // Center the screen
-    if(tsprite->posy > 124) {
-        //tsprite->posy -= ship->speed;
+    if(tsprite->circle.position.y > 124) {
+        scroll_factor = (tsprite->circle.position.y - 104)>>3;
+        //tsprite->circle.position.y -= ship->speed;
         vscroll_sprites(-scroll_factor);
-        screen_down(bmap,vscroll);
+        for(i=0;i<scroll_factor;i++){
+            screen_down(bmap,vscroll);
+        }
         //if(ship->speed == 2)
         //    screen_down(&backgroundmap,&vScroll);
-    } else if (tsprite->posy < 84) {
-        //tsprite->posy += ship->speed;
+    } else if (tsprite->circle.position.y < 84) {
+        scroll_factor = (104 - tsprite->circle.position.y)>>3;
+        //tsprite->circle.position.y += ship->speed;
         vscroll_sprites(scroll_factor);
-        screen_up(bmap,vscroll);
+        for(i=0;i<scroll_factor;i++){
+            screen_up(bmap,vscroll);
+        }
         //if(ship->speed == 2)
         //    screen_up(&backgroundmap,&vScroll);
     }
 
-    if(tsprite->posx > 148){
-        //tsprite->posx -= ship->speed;
+    if(tsprite->circle.position.x > 148){
+        scroll_factor = (tsprite->circle.position.x - 128)>>4;
+
+        //tsprite->circle.position.x -= ship->speed;
         hscroll_sprites(-scroll_factor);
-        screen_right(bmap,hscroll);
+        for(i=0;i<scroll_factor;i++){
+            screen_right(bmap,hscroll);
+        }
         //if(ship->speed == 2)
         //    screen_right(&backgroundmap,&hScroll);
-    } else if(tsprite->posx < 108) {
-        //tsprite->posx += ship->speed;
+    } else if(tsprite->circle.position.x < 108) {
+        scroll_factor = (128 - tsprite->circle.position.x)>>4;
+        //tsprite->circle.position.x += ship->speed;
         hscroll_sprites(scroll_factor);
-        screen_left(bmap,hscroll);
+        for(i=0;i<scroll_factor;i++){
+            screen_left(bmap,hscroll);
+        }
         //if(ship->speed == 2)
         //    screen_left(&backgroundmap,&hScroll);
     }
@@ -296,6 +318,45 @@ void load_map(blastmap* bmap, int xoffset, int yoffset) {
     }
 }
 
+#define BITMAPTILE
+void set_tile(blastmap* map, u16 mapx, u16 mapy, u16 screenx, u16 screeny) {
+#ifdef BITMAPTILE
+    VDP_setTileMapXY(
+            map->plane, 
+            TILE_ATTR_FULL(
+                PAL0, 
+                TRUE, 
+                FALSE, 
+                FALSE,
+                (u16*)GET_TILE_XY(map, mapx, mapy)), 
+            //(u16*)(bmap->tiles->data[(iW * (bmap->mapw)) + jW]) + bmap->tileoffset - 1,
+            /*(u16*)( bmap->tiles->data[
+                ( iW * (bmap->mapw)) + jW
+            ] 
+            + bmap->tileoffset - 1)),*/
+            screenx,
+            screeny
+    );
+#else
+
+    char str[10];
+    //u16 tile_in_map = (u16*)GET_TILE_XY(map, mapx, mapy);
+    //u16 tile_in_map = (u16*)((map->tiles->data[(mapy * (map->mapw)) + mapx]) - 1);
+    //u16 converted_tile = (map->tlookup[tile_in_map]) + map->tileoffset;
+
+    u16 converted_tile = (u16*)(map->tlookup[((map->tiles->data[(mapy * (map->mapw)) + mapx]) - 1)] + map->tileoffset);
+
+    uintToStr(converted_tile,str,3);
+    VDP_drawText(str, 3, 3);
+    VDP_setTileMapXY(
+           map->plane,
+           converted_tile,
+           screenx,
+           screeny
+    ); 
+#endif
+}
+
 void load_visible_map(blastmap* bmap, int xoffset, int yoffset) {
     /*
      * load_visible_map
@@ -339,13 +400,7 @@ void load_visible_map(blastmap* bmap, int xoffset, int yoffset) {
             if(jW == bmap->mapw) {
                 jW = 0;
             }
-            VDP_setTileMapXY(
-                    bmap->plane, 
-                    //(u16*)(bmap->tiles->data[(iW * (bmap->mapw)) + jW]) + bmap->tileoffset - 1,
-                    (u16*)GET_TILE_XY(bmap, jW, iW), 
-                    j,
-                    i
-            );
+            set_tile(bmap, jW, iW, j, i);
             j++;
             jW++;
         }

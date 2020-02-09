@@ -5,6 +5,7 @@ MAKE?=make
 LIB?=lib
 GENGCC_BIN=$(GENDEV)/bin
 GENBIN=$(GENDEV)/bin
+SGDK_VER=1.34
 
 CC = $(GENGCC_BIN)/m68k-elf-gcc 
 AS = $(GENGCC_BIN)/m68k-elf-as
@@ -30,16 +31,16 @@ SCD_LOADER = scd/LukeProjectCD
 OPTION =
 #OPTION = --save-temps
 #INCS = -I. -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/m68k-elf/include -Isrc -Ires
-INCS = -I$(GENDEV)/include/blast -I. -I $(GENDEV)/sgdk/res -I $(GENDEV)/sgdk/inc -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/m68k-elf/m68k-elf/include -I$(GENDEV)/include/blast -Isrc -Ires
+INCS = -I$(GENDEV)/include/blast -I. -I $(GENDEV)/sgdk$(SGDK_VER)/res -I $(GENDEV)/sgdk$(SGDK_VER)/inc -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/m68k-elf/m68k-elf/include -I$(GENDEV)/include/blast -Isrc -Ires
 CCFLAGS = $(OPTION) -m68000 -Wall -O2 -c -fomit-frame-pointer
 HWCCFLAGS = $(OPTION) -m68000 -Wall -O1 -c -fomit-frame-pointer
 Z80FLAGS = -vb2
 ASFLAGS = -m68000 --register-prefix-optional
 #LIBS =  -L$(GENDEV)/m68k-elf/lib -L$(GENDEV)/m68k-elf/lib/gcc/m68k-elf/4.8.2 -L$(GENDEV)/m68k-elf/m68k-elf/lib -lmd -lc -lgcc -lnosys -lm 
-LIBS =  -L$(GENDEV)/m68k-elf/lib -L$(GENDEV)/sgdk/lib -lmd -lnosys -lblast
+LIBS =  -L$(GENDEV)/m68k-elf/lib -L$(GENDEV)/sgdk$(SGDK_VER)/lib -lmd -lnosys -lblast
 LINKFLAGS = -T $(GENDEV)/ldscripts/sgdk.ld -Map=output.map -nostdlib 
 SCDLINKFLAGS = -T scd/mdcd.ld -nostdlib 
-ARCHIVES = $(GENDEV)/sgdk/lib/libmd.a 
+ARCHIVES = $(GENDEV)/sgdk$(SGDK_VER)/lib/libmd.a 
 
 
 # Are we AMD64?

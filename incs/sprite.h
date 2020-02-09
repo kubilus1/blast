@@ -1,6 +1,6 @@
 #ifndef _SPRITE
 #define _SPRITE
-
+//#include "math_tables.h"
 //#include "genesis.h"
 //#include "blast.h"
 //#include "tilemap.h"
@@ -10,7 +10,7 @@
 #define MAX_SPRITE_COL 2
 #define MAX_SPRITE_ROW 2
 
-typedef int bool;
+//typedef int bool;
 
 typedef struct _vec2 {
     s16 x;
@@ -22,6 +22,12 @@ typedef struct _AABB {
     vec2 min;
     vec2 max;
 } AABB;
+
+
+typedef struct _BLAST_Circle {
+    u8 radius;
+    vec2 position;
+} BLAST_Circle;
 
 typedef struct _spritedef
 {
@@ -52,12 +58,15 @@ typedef struct _spritedef
     // Tile width & height
     u8 tile_height;
     u8 tile_width;
-    // virtual position 
+    // virtual position in map 
     u16 vposx;
     u16 vposy;
     // VDP sprite list index
     u8 idx;
 
+    // horizontal and vertical attrs
+    u8 h_attr;
+    u8 v_attr;
 
     // Direction of motion
     // 0 up
@@ -71,21 +80,32 @@ typedef struct _spritedef
     //u8 col_group;
 
 
-    s8 x_vec;
-    s8 y_vec;
+    //s8 x_vec;
+    //s8 y_vec;
 
-
+#ifdef COLCHECK
     u8 columns[MAX_SPRITE_COL];
     u32 column_mask;
+#endif
+
+#ifdef ROWCHECK
     u32 row_mask;
     u8 rows[MAX_SPRITE_ROW];
+#endif 
 
     // Sprites axis aligned bounding box
     AABB aabb;
     fix16 inv_mass;
     vec2 velocity;
 
+    // Remainder velocity:w
+    vec2 r_vel;
+
+    BLAST_Circle circle;
     //u8* coll_list;
+
+    // Extra properties
+    void* properties;
 } spritedef;
 
 typedef struct _manifold {
@@ -136,9 +156,11 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
 void BLAST_updateSprites(); 
 void BLAST_setSpriteP(u16 index, const spritedef *sprite);
 void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m);
-bool get_manifold(spritedef* a, spritedef* b, manifold *m);
+bool get_box_manifold(spritedef* a, spritedef* b, manifold *m);
+bool get_circle_manifold(spritedef* a, spritedef* b, manifold *m);
 void move_sprite(spritedef* sprt, blastmap* map, void (*callback)(spritedef* insprt, u8 coll));
 void move_sprites(blastmap* map, void (*callback)(spritedef* sprt, u8 coll));
-void drag_sprites();
+void drag_sprites(u8 drag);
+void flip_sprite(spritedef* sprt, u8 h, u8 v);
 
 #endif

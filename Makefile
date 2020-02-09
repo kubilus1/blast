@@ -12,8 +12,9 @@ RM = rm -f
 ASMZ80 = $(GENBIN)/sjasm 
 BINTOS = $(GENBIN)/bintos 
 
-#OPTION= -Dnologo_ --save-temps -fverbose-asm -g 
-OPTION= -Dnologo_ -fverbose-asm -g 
+OPTION= -Dnologo_ --save-temps -fverbose-asm -g 
+#OPTION= -Dnologo_ -fverbose-asm -g 
+#OPTION= -Dnologo_
 
 CS=$(wildcard libs/*.c)
 SS=$(wildcard libs/*.s)
@@ -25,8 +26,11 @@ RESOURCES+=$(S80S:.s80=.o)
 blast.a_OBJS=$(RESOURCES)
 
 INCS = -Iincs -I$(GENDEV)/m68k-elf/include -I$(GENDEV)/sgdk/inc -I$(GENDEV)/sgdk/res
-FLAGS = $(OPTION) -m68000 -Wall -O1 -c -fomit-frame-pointer $(INCS) 
+FLAGS = $(OPTION) -m68000 -Wall -O2 -c -fomit-frame-pointer -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time $(INCS)  
+#FLAGS = $(OPTION) -m68000 -Wall -c -fomit-frame-pointer $(INCS) -O3 -flto -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time
+#FLAGS = $(OPTION) -m68000 -Wall -c -fomit-frame-pointer $(INCS) -O3 -flto -fuse-linker-plugin -fno-web -fno-gcse -fno-unit-at-a-time -fomit-frame-pointer
 FLAGSZ80 = -isrc -iincs -I$(GENDEV)/m68k-elf/include
+
 
 all: libblast.a
 

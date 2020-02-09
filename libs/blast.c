@@ -1,5 +1,6 @@
 #include "genesis.h"
 #include "blast.h"
+//#include "math_tables.h"
 
 char str[10];
 void vblank() {
@@ -13,16 +14,17 @@ void vblank() {
     //check_collision();
 }
 
-void hblank() {
+void _hblank() {
     //check_collision();
+#ifdef FOOBAR
     if(GET_VDPSTATUS(VDP_SPRCOLLISION_FLAG)) {
         //int i;
         //VDP_drawText(" COL ", 22, 20);
         //VDP_drawText(" COL ", 22, 20);
         //const u16 vcnt = GET_VCOUNTER;
-
-        coll_row_mask |= 1U << (GET_VCOUNTER/8);
-
+#ifdef ROWCHECK
+        coll_row_mask |= 1U << (GET_VCOUNTER >> 3);
+#endif
         //coll_vcnt = GET_VCOUNTER;
         //coll_row[ vcnt/8 ] = 1;
         spr_coll = 1;
@@ -33,16 +35,18 @@ void hblank() {
         //VDP_drawText(str, 24, 25);
         
     }
+#endif
 }
 
 void blast_init() {
     SYS_disableInts();
     VDP_init();
     VDP_resetSprites();
-    //VDP_setScreenWidth256();
-    VDP_setHIntCounter(2);
-    VDP_setHInterrupt(1);
-    VDP_setPlanSize(64,64);
+    VDP_setScreenWidth256();
+    //VDP_setScreenWidth320();
+    //VDP_setHIntCounter(2);
+    //VDP_setHInterrupt(1);
+    VDP_setPlanSize(64,32);
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
     //VDP_setTextPalette(1);
     //VDP_clearPlan(VDP_PLAN_A, 0);
@@ -50,12 +54,19 @@ void blast_init() {
     //VDP_clearPlan(VDP_PLAN_B, 0);
     VDP_clearPlan(PLAN_B, 0);
     SYS_setVIntCallback(vblank);
-    SYS_setHIntCallback(hblank);
-    memset(coll_row, 0, sizeof(coll_row));
+    //SYS_setHIntCallback(hblank);
+    //memset(coll_row, 0, sizeof(coll_row));
 
     spr_coll = 0;
-    coll_row_mask = 0;
+    //coll_row_mask = 0;
     SYS_enableInts();
+
+    //wait_vsync();
+    VDP_waitVSync();
+    VDP_waitVSync();
+    VDP_waitVSync();
+    VDP_waitVSync();
+    VDP_waitVSync();
 }
 
 void wait_vsync()

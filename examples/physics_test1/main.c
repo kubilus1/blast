@@ -36,15 +36,15 @@ void myJoyHandler(u16 joy, u16 changed, u16 state) {
     //VDP_drawTextBG(VDP_PLAN_A,"JOY   ",0x8000,1,1);
     if (joy == JOY_1) {
         if((state & BUTTON_UP)) {
-            asprite.velocity.y += -64;
+            asprite.velocity.y += -16;
         } else if ((state & BUTTON_DOWN)) {
-            asprite.velocity.y += 64;
+            asprite.velocity.y += 16;
         } 
             
         if ((state & BUTTON_RIGHT)) {
-            asprite.velocity.x += 64;
+            asprite.velocity.x += 16;
         } else if ((state & BUTTON_LEFT)) {
-            asprite.velocity.x += -64;
+            asprite.velocity.x += -16;
         }
     }
     asprite.velocity.x = min(asprite.velocity.x, 256);
@@ -85,7 +85,6 @@ void terrain_coll(spritedef* sprt, u8 coll_dir) {
 
     //sprt->direction += 128;
     //sprt->force = 2;
-
 }
 
 void (*coll_callback)(spritedef* sprta, spritedef* sprtb) = &do_coll;
@@ -93,6 +92,7 @@ void (*t_coll_callback)(spritedef* sprt, u8 coll) = &terrain_coll;
 
 int main() {
     
+    int i;
     /*
      *
      * Init Blast
@@ -140,15 +140,14 @@ int main() {
     asprite_idx = sprite_init(&asprite,terrain_tile_offset+7,1,256,256,1,1,PAL0);
     lista[0] = asprite_idx;
 
-
     bsprite_idx = sprite_init(&bsprite,terrain_tile_offset+7,1,256,220,1,1,PAL1);
     /*
     pow_idx = sprite_init(&pow,shot_offset,1,276,265,1,1,PAL0);
     pow1_idx = sprite_init(&pow1,shot_offset,1,226,285,1,1,PAL0);
     pow2_idx = sprite_init(&pow2,shot_offset,1,270,265,1,1,PAL0);
     */
-    asprite.inv_mass = FIX16(0.05);
-    bsprite.inv_mass = FIX16(0.25);
+    asprite.inv_mass = FIX16(0.5);
+    bsprite.inv_mass = FIX16(0.5);
     //pow.inv_mass = FIX16(0.5);
     //pow1.inv_mass = FIX16(0.2);
     //pow2.inv_mass = FIX16(0.25);
@@ -159,40 +158,32 @@ int main() {
 
     listc[0] = asprite_idx;
     listc[1] = bsprite_idx;
-    listc[2] = pow_idx;
-    listc[3] = pow1_idx;
-    listc[4] = pow2_idx;
+    //listc[2] = pow_idx;
+    //listc[3] = pow1_idx;
+    //listc[4] = pow2_idx;
 
     
 
     coly_idx = sprite_init(&coly,shot_offset,1,5,5,1,1,PAL0);
-    int i;
     for(i=0;i<25;i++){
         u8 x =
         sprite_init(
                 &spr_list[i],
                 shot_offset,
+                //terrain_tile_offset+7,
                 1,
                 random() % 64 + 200,
                 random() % 64 + 200,
-                1,1,PAL0);
+                1,1,PAL2);
         listd[i] = spr_list[i].idx;
         spr_list[i].velocity.x = random()>>8;
         spr_list[i].velocity.y = random()>>8;
+        spr_list[i].inv_mass = FIX16(0.5);
     }
 
    
     listd[25] = asprite_idx;
     listd[26] = bsprite_idx;
-    for(i=0;i<32;i++){
-        VDP_showFPS(0);
-        center_screen(&arena_map, asprite_idx, &hs, &vs); 
-        center_screen(&arena_map, asprite_idx, &hs, &vs); 
-        center_screen(&arena_map, asprite_idx, &hs, &vs); 
-        center_screen(&arena_map, asprite_idx, &hs, &vs); 
-        //BLAST_updateSprites();
-        VDP_waitVSync();
-    }
 
     //bsprite.direction = 160;
     //bsprite.force = 16;
@@ -213,7 +204,17 @@ int main() {
     pow2.velocity.y = -132;
     */
     
+    for(i=0;i<32;i++){
+        center_screen(&arena_map, asprite_idx, &hs, &vs); 
+        center_screen(&arena_map, asprite_idx, &hs, &vs); 
+        center_screen(&arena_map, asprite_idx, &hs, &vs); 
+        center_screen(&arena_map, asprite_idx, &hs, &vs); 
+        //BLAST_updateSprites();
+        VDP_waitVSync();
+    }
+
     while(1) {
+        //center_screen(&arena_map, asprite_idx, &hs, &vs); 
 
         // Move player
         myJoyHandler(JOY_1,0,JOY_readJoypad(JOY_1));
@@ -239,7 +240,7 @@ int main() {
 
         //check_t_collision(listb, 1, &arena_map, t_coll_callback);
         move_sprites(&arena_map, t_coll_callback);
-        //drag_sprites();
+       // drag_sprites();
 
         //VDP_showFPS(0);
         uintToStr(getFPS(), str, 1);

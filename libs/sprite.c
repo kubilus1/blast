@@ -1,13 +1,20 @@
 #include "genesis.h"
 #include "blast.h"
+#include "math_tables.h"
+//#define TESTCOLL 1
+//#define DEBUG 1
+//#define MATH_BIG_TABLES 1
+//#define OVERLAP 1
+#undef OVERLAP
 
 char abuf[50];
 // Serve as the sprite counter
 u8 _sprite_count = 0;
 u16 spriteNum;
 
-//SpriteDef vdpSpriteCache[MAX_SPRITE];
+u8 move_count = 1;
 
+//SpriteDef vdpSpriteCache[MAX_SPRITE];
 void BLAST_setSpriteP(u16 index, const spritedef *sprite)
 {
 }
@@ -16,9 +23,10 @@ void BLAST_updateSprites()
 {
     vu32 *plctrl;
     vu16 *pwdata;
+    u32 addr;
     //SpriteDef *sprite;
     spritedef *sprite;
-    u16 i;
+    u16 i = 0;
     int cur_idx = 0;
     int next_idx = 0;
 
@@ -31,23 +39,31 @@ void BLAST_updateSprites()
     plctrl = (u32 *) GFX_CTRL_PORT;
     pwdata = (u16 *) GFX_DATA_PORT;
 
-    *plctrl = GFX_WRITE_VRAM_ADDR(SLIST);
-
-
-
     while(1)
     {
         sprite = _sprite_all[cur_idx];
-        // y position
-        *pwdata = 0x80 + sprite->posy;
-        // size & link
-        *pwdata = (sprite->size << 8) | sprite->link;
-        // tile attribut
-        *pwdata = sprite->tile_attr;
-        // x position
-        *pwdata = 0X80 + sprite->posx;
+
+  //      if(sprite->posx < 320 && sprite->posx > -50 && sprite->posy < 240 && sprite->posy > -50) {
+            // Make sure we are updating the correct index
+            addr = SLIST + (cur_idx * 8);
+            *plctrl = GFX_WRITE_VRAM_ADDR(addr);
+
+            //i++;
+            // y position
+            *pwdata = 0x80 + sprite->posy;
+            // size & link
+            *pwdata = (sprite->size << 8) | sprite->link;
+            // tile attribut
+            *pwdata = sprite->tile_attr;
+            // x position
+            *pwdata = 0X80 + sprite->posx;
+  //      }
 
         next_idx = sprite->link;
+        
+        //uintToStr(sprite->link, abuf, 3);
+        //VDP_drawText(abuf, 5, 7+i);
+
         if(next_idx == 0)
         {
             break;
@@ -55,6 +71,8 @@ void BLAST_updateSprites()
         cur_idx = next_idx;
     }
 
+    //uintToStr(i, abuf, 3);
+    //VDP_drawText(abuf, 5, 6);
 
     /*
     sprite = &vdpSpriteCache[0];
@@ -80,15 +98,22 @@ void BLAST_updateSprites()
 }
 
 void sprite_setrowcol(spritedef* sprite) {
-    
+    return;
+#ifdef COLCHECK
     sprite->columns[0] = sprite->posx/8;
     sprite->columns[1] = (sprite->posx + sprite->width)/8;
+#endif
     //sprite->rows[0] = sprite->posy/8;
     //sprite->rows[1] = (sprite->posy + sprite->height)/8;
-
+#ifdef ROWCHECK
     sprite->row_mask = 0;
-    sprite->row_mask |= 1U << (sprite->posy/8);
-    sprite->row_mask |= 1U << ((sprite->posy + sprite->height)/8);
+    
+    //sprite->row_mask |= 1U << (sprite->posy/8);
+    //sprite->row_mask |= 1U << ((sprite->posy + sprite->height)/8);
+    
+    sprite->row_mask |= 1U << ((sprite->aabb.min.y)/8);
+    sprite->row_mask |= 1U << ((sprite->aabb.max.y)/8);
+#endif
     /*     
     VDP_drawText("           ", 18, 16);
     VDP_drawText("           ", 18, 17);
@@ -102,6 +127,7 @@ void sprite_setrowcol(spritedef* sprite) {
 }
 
 u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h, u8 pal) {
+    // Position in the plane
     sprite->posx = x;
     sprite->posy = y;
     sprite->size = SPRITE_SIZE(w,h);
@@ -120,16 +146,22 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
     
 
     // This doesn't appear to be correct after moving screen
+    // vpos: position in the map coordinates
     sprite->vposx = x + hs;
     sprite->vposy = y + vs;
     
     sprite->idx = add_sprite(sprite);
     //sprite->coll_list = coll_list;
-    
+   
+    sprite->h_attr = 0;
+    sprite->v_attr = 0;
+
     sprite->direction=0;
     sprite->force=0;
 
+#ifdef COLCHECK
     sprite->column_mask = 0;
+#endif
 
     /*
     sprite->minx = x;
@@ -139,7 +171,6 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
     */
 
 
-    sprite_setrowcol(sprite);
 
     /*
     u16 i;
@@ -162,26 +193,126 @@ u16 sprite_init(spritedef* sprite, u16 addr, u16 steps, s16 x, s16 y, u8 w, u8 h
     sprite->aabb.max.x = (w*8)+x;
     sprite->aabb.max.y = (h*8)+y;
 
+    sprite->circle.radius = 4;
+    sprite->circle.position.x = x + 4;
+    sprite->circle.position.y = y + 4;
+
     sprite->inv_mass = FIX16(0.1);
+    
     sprite->velocity.x = 0;
     sprite->velocity.y = 0;
 
+    sprite->r_vel.x = 0;
+    sprite->r_vel.y = 0;
 
-
+    sprite_setrowcol(sprite);
     return sprite->idx;
 }
 
+bool check_circle(BLAST_Circle a, BLAST_Circle b) {
+    u16 r = a.radius + b.radius;
+    r *= r;
+    
+    s16 x = (a.position.x - b.position.x);
+    x *= x;
+
+    s16 y = (a.position.y - b.position.y);
+    y *= y;
+
+    if (r > (x + y) ) {
+#ifdef DEBUG
+        VDP_drawText("check_c", 36, 15); 
+        intToStr(r,abuf,3);
+        VDP_drawText(abuf, 36,16);
+        intToStr(a.position.x,abuf,6);
+        VDP_drawText(abuf, 36, 17);
+        intToStr(b.position.x,abuf,6);
+        VDP_drawText(abuf, 36, 18);
+        intToStr(x,abuf,6);
+        VDP_drawText(abuf, 36, 19);
+        intToStr(y,abuf,6);
+        VDP_drawText(abuf, 36, 20);
+#endif
+
+        return true;
+    }
+
+    return false;
+}
 
 bool check_aabb(AABB a, AABB b) {
+    if(a.max.x < b.min.x)
+        return false;
+
+    if(a.min.x > b.max.x)
+        return false;
+
+    if(a.max.y < b.min.y)
+        return false;
+
+    if(a.min.y > b.max.y)
+        return false;
     // Exit with no intersection if found separated along an axis
-    if(a.max.x < b.min.x || a.min.x > b.max.x) return false;
-    if(a.max.y < b.min.y || a.min.y > b.max.y) return false;
+    //if(a.max.x < b.min.x || a.min.x > b.max.x) return false;
+    //if(a.max.y < b.min.y || a.min.y > b.max.y) return false;
         
     // No separating axis found, therefor there is at least one overlapping axis
     return true;
 }
 
-bool get_manifold(spritedef* a, spritedef* b, manifold *m) {
+
+bool get_circle_manifold(spritedef* a, spritedef* b, manifold* m) {
+    vec2 n;
+    n.x = b->circle.position.x - a->circle.position.x;
+    n.y = b->circle.position.y - a->circle.position.y;
+
+    u16 r = (a->circle.radius + b->circle.radius);
+    //r *= r;
+
+    s16 n_length = (n.x * n.x) + (n.y * n.y);
+
+#ifdef DEBUG
+    VDP_drawText("get_circle_m", 30, 15); 
+    intToStr(n_length,abuf,3);
+    VDP_drawText(abuf, 30,16);
+    intToStr(r,abuf,3);
+    VDP_drawText(abuf, 30, 17);
+    intToStr(n.x,abuf,3);
+    VDP_drawText(abuf, 30, 18);
+    intToStr(n.y,abuf,3);
+    VDP_drawText(abuf, 30, 19);
+#endif
+
+    if(n_length > (r * r)) {
+        //VDP_drawText("reject", 30, 14);
+        return false;
+    }
+
+
+    u8 d = (sqrt_table[n_length]>>4);
+#ifdef DEBUG
+    intToStr(d,abuf,3);
+    VDP_drawText(abuf, 30, 20);
+#endif
+    /*
+    while(1) {
+        VDP_waitVSync();
+    }
+    */
+    if(d != 0) {
+        m->penetration = r - d;
+        m->normal.x = ((n.x) / d)<<4;
+        m->normal.y = ((n.y) / d)<<4;
+        return true;
+    } else {
+        m->penetration = a->circle.radius;
+        m->normal.x = 16;
+        m->normal.y = 0;
+        return true;
+    }
+}
+
+bool get_box_manifold(spritedef* a, spritedef* b, manifold *m) {
     vec2 n;
     n.x = b->posx - a->posx;
     n.y = b->posy - a->posy;
@@ -201,13 +332,16 @@ bool get_manifold(spritedef* a, spritedef* b, manifold *m) {
 
         u16 y_overlap = a_extent + b_extent - abs(n.y);
         if(y_overlap > 0) {
+
+            
+
             if(x_overlap < y_overlap) {
                 //VDP_drawText(" X min ", 14, 19);
                 if(n.x < 0){
-                    m->normal.x = -1;
+                    m->normal.x = -16;
                     m->normal.y = 0;
                 } else {
-                    m->normal.x = 1;
+                    m->normal.x = 16;
                     m->normal.y = 0;
                 }
                 m->penetration = x_overlap;
@@ -216,11 +350,11 @@ bool get_manifold(spritedef* a, spritedef* b, manifold *m) {
                 if(n.y < 0) {
                     //VDP_drawText(" y>0 ", 19, 18);
                     m->normal.x = 0;
-                    m->normal.y = -1;
+                    m->normal.y = -16;
                 } else {
                     //VDP_drawText(" y>0 ", 19, 18);
                     m->normal.x = 0;
-                    m->normal.y = 1;
+                    m->normal.y = 16;
                 }
                 m->penetration = y_overlap;
             }
@@ -231,27 +365,21 @@ bool get_manifold(spritedef* a, spritedef* b, manifold *m) {
     return false;
 }
 
-//#define TESTCOLL 1
-
 void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m) {
-#ifdef TESTCOLL
-    if ( sprt_a->velocity.y == 0 ){
-        return;
-    }
-#endif
     vec2 rv;
 
     rv.x = sprt_b->velocity.x - sprt_a->velocity.x;
     rv.y = sprt_b->velocity.y - sprt_a->velocity.y;
  
-#ifdef DEBUG   
+#ifdef DEBUG  
+    //VDP_drawText("line 15", 30, 15); 
     intToStr(rv.x,abuf,3);
     VDP_drawText(abuf, 14,15);
     intToStr(rv.y,abuf,3);
     VDP_drawText(abuf, 14,16);
 #endif
 
-    s16 vel_normal = ((rv.x * m->normal.x) + (rv.y * m->normal.y));
+    s16 vel_normal = ((rv.x * (m->normal.x>>4)) + (rv.y * (m->normal.y>>4)));
 
 #ifdef DEBUG
     intToStr(vel_normal,abuf,3);
@@ -262,21 +390,6 @@ void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m) {
 #ifdef DEBUG
         VDP_drawText(" SKIP  ", 19, 16);
 #endif
-#ifdef TESTCOLL
-        intToStr(sprt_a->velocity.x,abuf,3);
-        VDP_drawText(abuf, 14,21);
-        intToStr(sprt_a->velocity.y,abuf,3);
-        VDP_drawText(abuf, 14,22);
-
-        intToStr(sprt_b->velocity.x,abuf,3);
-        VDP_drawText(abuf, 14,23);
-        intToStr(sprt_b->velocity.y,abuf,3);
-        VDP_drawText(abuf, 14,24);
-        sprt_a->velocity.x = 0;
-        sprt_a->velocity.y = 0;
-        sprt_b->velocity.x = 0;
-        sprt_b->velocity.y = 0;
-#endif 
         //VDP_drawText(" SKIP  ", 19, 17);
         return;
     }
@@ -308,15 +421,18 @@ void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m) {
     //u16 mass_sum = sprt_a->mass + sprt_b->mass;
 
     vec2 impulse;
-    impulse.x = fix16ToInt(fix16Mul(j, intToFix16(m->normal.x)));
-    impulse.y = fix16ToInt(fix16Mul(j, intToFix16(m->normal.y)));
-
+    impulse.x = fix16ToInt(fix16Mul(j, intToFix16(m->normal.x>>4)));
+    impulse.y = fix16ToInt(fix16Mul(j, intToFix16(m->normal.y>>4)));
+   
+#ifdef BOUNDS 
     /* Max impulse */
     impulse.x = min(impulse.x, 256);
     impulse.x = max(impulse.x, -256);
     impulse.y = min(impulse.y, 256);
     impulse.y = max(impulse.y, -256);
+#endif
     /*
+     *
     if (impulse.x > 256 || impulse.y > 256) {
         VDP_drawText("BOUNDS EXCEEDED", 14, 17);
     }
@@ -348,13 +464,25 @@ void sprite_bounce(spritedef* sprt_a, spritedef* sprt_b, manifold* m) {
     intToStr(sprt_b->velocity.y,abuf,3);
     VDP_drawText(abuf, 14,24);
 #endif 
-#ifdef TESTCOLL
-    sprt_a->velocity.x = 0;
-    sprt_a->velocity.y = 0;
-    sprt_b->velocity.x = 0;
-    sprt_b->velocity.y = 0;
-#endif 
 
+#ifdef OVERLAP
+    u16 p_amnt = abs(m->penetration) >> 1;
+    if(m->normal.x < 0) {
+        sprite_left(sprt_b, p_amnt, 512);
+        sprite_right(sprt_a, p_amnt, 512);
+    } else if (m->normal.x > 0) {
+        sprite_right(sprt_b, p_amnt, 512);
+        sprite_left(sprt_a, p_amnt, 512);
+    }   
+    if(m->normal.y < 0) {
+        sprite_up(sprt_b, p_amnt, 512);
+        sprite_down(sprt_a, p_amnt, 512);
+    } else if (m->normal.y > 0) {
+        sprite_down(sprt_b, p_amnt, 512);
+        sprite_up(sprt_a, p_amnt, 512);
+    }   
+#endif
+    //return;
 
     sprt_a->velocity.x = min(sprt_a->velocity.x, 256);
     sprt_a->velocity.x = max(sprt_a->velocity.x, -256);
@@ -380,6 +508,9 @@ void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posx-=amnt;
     sprt->aabb.min.x-=amnt;
     sprt->aabb.max.x-=amnt;
+    sprt->circle.position.x-=amnt;
+
+    sprite_setrowcol(sprt);
     //sprt->direction=192;
 
     /*
@@ -409,7 +540,6 @@ void sprite_left(spritedef *sprt, u8 amnt, u16 max) {
         }
     }
     */
-    sprite_setrowcol(sprt);
     if(sprt->vposx  <= amnt) {
         //sprt->vposx = (sprt->vposx - amnt) + 65536;
         sprt->vposx = max - (amnt - 1);
@@ -424,6 +554,7 @@ void sprite_right(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posx+=amnt;
     sprt->aabb.min.x+=amnt;
     sprt->aabb.max.x+=amnt;
+    sprt->circle.position.x+=amnt;
     //sprt->direction=64;
     sprite_setrowcol(sprt);
 
@@ -462,6 +593,7 @@ void sprite_up(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy-=amnt;
     sprt->aabb.min.y-=amnt;
     sprt->aabb.max.y-=amnt;
+    sprt->circle.position.y-=amnt;
     //sprt->direction=0;
     sprite_setrowcol(sprt);
     //uintToStr((sprt->posy),abuf,3);
@@ -484,6 +616,7 @@ void sprite_down(spritedef *sprt, u8 amnt, u16 max) {
     sprt->posy+=amnt;
     sprt->aabb.min.y+=amnt;
     sprt->aabb.max.y+=amnt;
+    sprt->circle.position.y+=amnt;
     //sprt->direction=128;
     sprite_setrowcol(sprt);
     //uintToStr((sprt->posy),abuf,3);
@@ -507,7 +640,7 @@ void animate_sprite(spritedef *sprt)
 {
     sprt->tile_attr = TILE_ATTR_FULL(
         sprt->pal,
-        1,0,0,
+        1,sprt->v_attr,sprt->h_attr,
         sprt->startaddr+(sprt->tilesize*(sprt->curstep % sprt->steps)));
     sprt->curstep++;
 }
@@ -577,6 +710,8 @@ u8 add_sprite(spritedef* sprite)
     // Update link of last_idx
     _sprite_all[last_idx]->link = cur_idx;
 
+    //uintToStr(_sprite_count, abuf, 3);
+    //VDP_drawText(abuf, 5, 5);
     return cur_idx;
 }
 
@@ -599,26 +734,103 @@ int drop_sprite(u8 del_idx)
         {
             //Found the item to delete
             _sprite_all[last_idx]->link = _sprite_all[idx]->link;
+            _sprite_count--;
             break;
         }
 
     }
-    _sprite_count--;
+    //uintToStr(_sprite_count, abuf, 3);
+    //VDP_drawText(abuf, 5, 5);
     return 0;
+}
+
+void set_sprite_x(spritedef* sprite, u16 map_max_x) {
+
+    if(sprite->circle.position.x < 0) {
+        sprite->circle.position.x = ((map_max_x) + sprite->circle.position.x + 1);
+    } else if (sprite->circle.position.x > map_max_x) {
+        sprite->circle.position.x = (sprite->circle.position.x - (map_max_x) - 1);
+    }
+    
+    if(sprite->aabb.min.x < 0) {
+        sprite->aabb.min.x = (map_max_x + sprite->aabb.min.x + 1);
+    } else if (sprite->aabb.min.x > map_max_x) {
+        sprite->aabb.min.x = (sprite->aabb.min.x - map_max_x - 1);
+    }    
+
+    if(sprite->aabb.max.x < 0) {
+        sprite->aabb.max.x = (map_max_x + sprite->aabb.max.x + 1);
+    } else if (sprite->aabb.max.x > map_max_x) {
+        sprite->aabb.max.x = (sprite->aabb.max.x - map_max_x - 1);
+    }    
+}
+
+void set_sprite_y(spritedef* sprite, u16 map_max_y) {
+
+    if(sprite->circle.position.y < 0) {
+        sprite->circle.position.y = ((map_max_y) + sprite->circle.position.y + 1);
+    } else if (sprite->circle.position.y > map_max_y) {
+        sprite->circle.position.y = (sprite->circle.position.y - (map_max_y) - 1);
+    }
+    
+    if(sprite->aabb.min.y < 0) {
+        sprite->aabb.min.y = (map_max_y + sprite->aabb.min.y + 1);
+    } else if (sprite->aabb.min.y > map_max_y) {
+        sprite->aabb.min.y = (sprite->aabb.min.y - map_max_y - 1);
+    }    
+
+    if(sprite->aabb.max.y < 0) {
+        sprite->aabb.max.y = (map_max_y + sprite->aabb.max.y + 1);
+    } else if (sprite->aabb.max.y > map_max_y) {
+        sprite->aabb.max.y = (sprite->aabb.max.y - map_max_y) - 1;
+    }    
 }
 
 void hscroll_sprites(s8 hscroll) 
 {
     int cur_idx = 0;
     int next_idx = 0;
+    int y = 10;
     spritedef* tsprite;
+
+    u16 map_max_x = (fore_map->mapw * 8) - 1;
 
     while(1)
     {
         // If the next link is 0, we are at the end
         tsprite = _sprite_all[cur_idx];
+        
+        /*
+        if(hscroll > 0) {
+            sprite_right(tsprite, hscroll, 512);
+        } else {
+            sprite_left(tsprite, hscroll, 512);
+        }*/
+       
+       
+         
         tsprite->posx += hscroll;
+        tsprite->aabb.min.x += hscroll;
+        tsprite->aabb.max.x += hscroll;
+        tsprite->circle.position.x += hscroll;
         sprite_setrowcol(tsprite);
+        set_sprite_x(tsprite, map_max_x);
+
+        /*
+        VDP_drawText("         ", 20, y);
+        uintToStr(tsprite->circle.position.x, abuf, 5);
+        VDP_drawText(abuf, 20, y);
+        y+=1;
+        */
+
+        /*
+        if(hscroll > 0){
+            sprite_right(tsprite, abs(hscroll), 512);
+         } else {
+             sprite_left(tsprite, hscroll, 512);
+         }
+        */
+
         //BLAST_setSpriteP(
         //    cur_idx, 
         //    _sprite_all[cur_idx]);
@@ -641,14 +853,28 @@ void vscroll_sprites(s8 vscroll)
     int cur_idx = 0;
     int next_idx = 0;
     spritedef* tsprite;
+    u16 map_max_y = (fore_map->maph * 8) - 1;
 
     while(1)
     {
         //VDP_drawTextBG(VDP_PLAN_A, "SCROLL", 0x8000, 4,4);
         // If the next link is 0, we are at the end
         tsprite = _sprite_all[cur_idx];
+    
+        /*
+        if(vscroll > 0) {
+            sprite_down(tsprite, vscroll, 512);
+        } else {
+            sprite_up(tsprite, vscroll, 512);
+        }
+        */
         tsprite->posy += vscroll;
+        tsprite->aabb.min.y += vscroll;
+        tsprite->aabb.max.y += vscroll;
+        tsprite->circle.position.y += vscroll;
+        set_sprite_y(tsprite, map_max_y);
         sprite_setrowcol(tsprite);
+        
         //BLAST_setSpriteP(
         //    cur_idx, 
         //    _sprite_all[cur_idx]);
@@ -662,87 +888,12 @@ void vscroll_sprites(s8 vscroll)
         next_idx = _sprite_all[cur_idx]->link;
         if(next_idx == 0)
         {
+            //uintToStr(cur_idx, abuf, 3);
+            //VDP_drawText(abuf, 12,12);
             break;
         }
         cur_idx = next_idx;
     }
-}
-
-
-void check_t_collision(u8* slist, u8 list_len, blastmap* map, void (*callback)(spritedef* sprt, u8 coll)) {
-    u8 i;
-    spritedef* sprt;
-    u8 coll = 0;
-    for(i=0;i<list_len;i++){
-        sprt = _sprite_all[slist[i]];
-        coll = 0;
-
-
-
-        /*
-        // Check diagonals
-        switch(sprt->direction) {
-            case 32:
-                if(check_up(map, sprt))
-                    sprt->direction = 64;
-                break;
-            case 96:
-                if(check_right(map, sprt))
-                    sprt->direction = 128;
-                break;
-            case 160:
-                if(check_down(map, sprt))
-                    sprt->direction = 192;
-                break;
-            case 224:
-                if(check_left(map, sprt))
-                    sprt->direction = 0;
-                break;
-        }
-
-        switch(sprt->direction) {
-            case 224:
-            case 0:
-                coll |= check_up(map, sprt);
-                if(coll && sprt->direction == 224){
-                    sprt->direction = 192;
-                    coll = 0;
-                }
-                break;
-            case 32:
-                // Already checked 
-                //coll = check_up(map, sprt);
-            case 64:
-                coll |= check_right(map, sprt);
-                if(coll && sprt->direction == 32){
-                    sprt->direction = 0;
-                    coll = 0;
-                }
-                break;
-            case 96:
-                //coll = check_right(map, sprt);
-            case 128:
-                coll |= check_down(map, sprt);
-                if(coll && sprt->direction == 96){
-                    sprt->direction = 64;
-                    coll = 0;
-                }
-                break;
-            case 160:
-                //coll = check_down(map, sprt);
-            case 192:
-                coll |= check_left(map, sprt);
-                if(coll && sprt->direction == 160){
-                    sprt->direction = 128;
-                    coll = 0;
-                }
-                break;
-        }
-        if(coll != 0) {
-            (*callback) (sprt, coll);
-        }*/
-    }
-    
 }
 
 void do_noop(){
@@ -751,7 +902,6 @@ void do_noop(){
 }
 
 void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*callback)(spritedef* sprta, spritedef* sprtb)){
-
     /*
     for sprite_a in lista:
         for sprite_b in listb:
@@ -768,32 +918,38 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
 
     u8 a_idx;
     u8 b_idx;
-    u8 a_row_idx;
+
+#ifdef COLCHECK
     u8 a_col_idx;
     u8 b_col_idx;
-
-    u32 column_collision = 0;
-    u32 row_collision;
+#endif
+    //u32 column_collision = 0;
+#ifdef ROWCHECK
+    //u8 a_row_idx;
+    //u32 row_collision;
+#endif
 
     spritedef* sprite_a;
     spritedef* sprite_b;
-    manifold* coll_manifold;
     
 #ifdef DEBUG
-    VDP_drawText("             ", 20,20);
-    VDP_drawText("             ", 20,21);
+    VDP_drawText("        ", 20,20);
+    VDP_drawText("        ", 20,21);
 #endif
     for(a_idx=0; a_idx < lista_len; a_idx++) {
         // For each sprite_a in lista
         sprite_a = _sprite_all[lista[a_idx]];
-        
+#ifdef ROWCHECK
+        /*        
         if((sprite_a->row_mask & coll_row_mask) == 0) {
             // If not on a row with a collision, skip
             continue;
         }
+        */
+#endif
 #ifdef DEBUG
         // Row collision
-        VDP_drawText("Row Coll     ", 20,20);
+        VDP_drawText("Row Coll", 20,20);
 #endif 
         for(b_idx=0; b_idx < listb_len; b_idx++) {
             // For each sprite_b in listb
@@ -803,12 +959,16 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
                 // Don't check sprite against itself!
                 continue;
             }
+#ifdef ROWCHECK
 
+            /*
             if((sprite_b->row_mask & coll_row_mask) == 0) {
                 // If not on a row with a collision, skip
                 continue;
             }
-        
+            */
+#endif
+#ifdef COLCHECK
             for(a_col_idx=0; a_col_idx < MAX_SPRITE_COL; a_col_idx++) {
             // For each column of sprite_a
             //
@@ -816,65 +976,93 @@ void check_collision(u8* lista, u8 lista_len, u8* listb, u8 listb_len, void (*ca
                     // For each colum of spriteb
 
                     if(sprite_a->columns[a_col_idx] == sprite_b->columns[b_col_idx]) {
+#endif
+#ifdef ROWCHECK
+                        if(sprite_a->row_mask & sprite_b->row_mask == 0) {
+                            continue;
+                        }
+#endif
                         if(check_aabb(sprite_a->aabb, sprite_b->aabb)) {
+                        //if(check_circle(sprite_a->circle, sprite_b->circle)) {
                             // Collision!
                             // Do a callback
                             //column_collision += 1;
                             //do_noop();
                             (*callback) (sprite_a, sprite_b);
-                            //if(get_manifold(sprite_a, sprite_b, coll_manifold)) {
-                                //sprite_bounce(sprite_a, sprite_b, coll_manifold);
-                            //}
+                            /*if(get_manifold(sprite_a, sprite_b, coll_manifold)) {
+                                sprite_bounce(sprite_a, sprite_b, coll_manifold);
+                            }*/
                         }
+#ifdef COLCHECK
                     }
                 }
             }
+#endif
         }
     }
+#ifdef ROWCHECK
     // Clear collision mask
-    coll_row_mask = 0;
+    //coll_row_mask = 0;
+#endif
 }
 
 
 void move_sprite(spritedef* sprt, blastmap* map, void (*callback)(spritedef* insprt, u8 coll)){
-    if((sprt->velocity.x == 0) && (sprt->velocity.y == 0))
+    s16 x;
+    s16 y;
+    u8 coll = 0;
+
+    if(abs(sprt->velocity.x) < 64) {
+        sprt->r_vel.x += sprt->velocity.x;
+        x = abs(sprt->r_vel.x)>>6;
+    } else {
+        x = abs(sprt->velocity.x)>>6; 
+    }
+           
+    if(abs(sprt->velocity.y) < 64) {
+        sprt->r_vel.y += sprt->velocity.y;
+        y = abs(sprt->r_vel.y)>>6;
+    } else {
+        y = abs(sprt->velocity.y)>>6; 
+    }
+     
+    if((x == 0) & (y == 0)) 
         return;
 
-    u8 coll = 0;
-    if(sprt->velocity.x>0) {
+    if((sprt->velocity.x > 0) || (sprt->r_vel.x > 0)) {
+        sprt->r_vel.x = 0;
         coll = check_right(map, sprt);
         if(coll == NOCOLL || coll == COLL_RIGHT) {
-            sprite_right(sprt, (sprt->velocity.x>>6), 512);
-            //sprt->velocity.x -= 1;
+            sprite_right(sprt, x, 512);
         } else {
             sprt->velocity.x *= -1;    
             (*callback)(sprt, coll);
         }
-    } else if (sprt->velocity.x<0) {
+    } else {
+        sprt->r_vel.x = 0;
         coll = check_left(map, sprt);
         if(coll == NOCOLL || coll == COLL_LEFT) {
-            sprite_left(sprt, ((sprt->velocity.x*-1)>>6), 512);
-            //sprt->velocity.x += 1;
+            sprite_left(sprt, x, 512);
         } else {
             sprt->velocity.x *= -1;    
             (*callback)(sprt, coll);
         }
     }
 
-    if(sprt->velocity.y<0) {
+    if((sprt->velocity.y < 0) || (sprt->r_vel.y < 0)) {
+        sprt->r_vel.y = 0;
         coll = check_up(map, sprt);
         if(coll == NOCOLL || coll == COLL_UP) {
-            sprite_up(sprt, (abs(sprt->velocity.y)>>6), 512);
-            //sprt->velocity.y -= 1;
+            sprite_up(sprt, y, 512);
         } else {
             sprt->velocity.y *= -1;
             (*callback)(sprt, coll);
         }
-    } else if (sprt->velocity.y>0) {
+    } else {
+        sprt->r_vel.y = 0;
         coll = check_down(map, sprt);
         if(coll == NOCOLL || coll == COLL_DOWN) {
-            sprite_down(sprt, (sprt->velocity.y>>6), 512);
-            sprt->velocity.y += 1;
+            sprite_down(sprt, y, 512);
         } else {
             sprt->velocity.y *= -1;
             (*callback)(sprt, coll);
@@ -904,26 +1092,24 @@ void move_sprites(blastmap* map, void (*callback)(spritedef* sprt, u8 coll)) {
 }
 
 
-void drag_sprites() {
+void drag_sprites(u8 drag) {
     u8 cur_idx = 0;
     u8 next_idx = 0;
     spritedef* tsprite;
-
-    u8 drag = 1;
 
     while(1) {
         tsprite = _sprite_all[cur_idx];
         
         if(tsprite->velocity.x > 0) {
-            tsprite->velocity.x -= drag;
+            tsprite->velocity.x = max((tsprite->velocity.x - drag), 0);
         } else if (tsprite->velocity.x < 0) {
-            tsprite->velocity.x += drag;
+            tsprite->velocity.x = min((tsprite->velocity.x + drag), 0);
         }
 
         if(tsprite->velocity.y > 0) {
-            tsprite->velocity.y -= drag;
+            tsprite->velocity.y = max((tsprite->velocity.y - drag), 0);
         } else if (tsprite->velocity.y < 0) {
-            tsprite->velocity.y += drag;
+            tsprite->velocity.y = min((tsprite->velocity.y + drag), 0);
         }
 
         next_idx = tsprite->link;
@@ -932,4 +1118,16 @@ void drag_sprites() {
         }
         cur_idx = next_idx;
     }
+}
+
+void flip_sprite(spritedef* sprt, u8 h, u8 v) {
+    sprt->tile_attr = TILE_ATTR_FULL(
+        sprt->pal, 
+        1, 
+        v, 
+        h, 
+        sprt->startaddr+(sprt->tilesize*(sprt->curstep % sprt->steps))
+    );
+    sprt->v_attr = v;
+    sprt->h_attr = h;
 }
