@@ -446,13 +446,21 @@ void load_map_row(blastmap* bmap, u8 row) {
 
     j = bmap->tX;
     jW = bmap->winX;
+
+    u16 numtiles = (winW+2);
+    u16 tiles[numtiles];
+    
+    if(j == bmap->planwidth) {
+        j = 0;
+    } 
     for(xcount=0;xcount<=winW+1;xcount++){
-        if(j == bmap->planwidth) {
-            j = 0;
-        } 
         if(jW == bmap->mapw) {
+            // Wrap around
             jW = 0;
         }
+        
+        tiles[xcount] = (u16*)GET_TILE_XY(bmap, jW, iW); 
+        /*
         VDP_setTileMapXY(
                 bmap->plane, 
                 //(u16*)bmap->tiles->data[(iW * (bmap->mapw)) + jW] + bmap->tileoffset - 1,
@@ -460,9 +468,59 @@ void load_map_row(blastmap* bmap, u8 row) {
                 j,
                 i
         );
-        j++;
+        */
+        //j++;
         jW++;
     }
+
+    if ( (j + numtiles) >= bmap->planwidth ) {
+        // We will wrap around in the plane
+
+        u16 numtiles_a = (bmap->planwidth - j);
+        u16 numtiles_b = numtiles - numtiles_a;
+
+        VDP_setTileMapDataRect(
+                bmap->plane,
+                tiles,
+                j,
+                i,
+                numtiles_a,
+                1
+        );
+        VDP_setTileMapDataRect(
+                bmap->plane,
+                (u16*)tiles + numtiles_a,
+                0,
+                i,
+                numtiles_b,
+                1
+        );
+
+    } else {
+
+        // Does this handle plane wrap around? NOPE
+        VDP_setTileMapDataRect(
+                bmap->plane,
+                tiles,
+                j,
+                i,
+                numtiles,
+                1
+        );
+  
+    }
+
+    /*
+    VDP_setTileMapData(
+            bmap->plane.value,
+            tiles,
+            bmap->tX,
+            numtiles,
+            DMA
+    );
+    */
+    //VDP_waitVSync();
+
 }
 
 void load_map_col(blastmap* bmap, u8 col) {
@@ -492,21 +550,61 @@ void load_map_col(blastmap* bmap, u8 col) {
 
     j = bmap->tY;
     jW = bmap->winY;
+
+    u16 numtiles = (winH+2);
+    u16 tiles[numtiles];
+
+    if(j == bmap->planheight) {
+        j = 0;
+    } 
     for(ycount=0;ycount<=winH+1;ycount++){
-        if(j == bmap->planheight) {
-            j = 0;
-        } 
         if(jW == bmap->maph) {
             jW = 0;
         }
-        VDP_setTileMapXY(
+        tiles[ycount] = (u16*)GET_TILE_XY(bmap, iW, jW); 
+       /* VDP_setTileMapXY(
                 bmap->plane, 
                 //(u16*)bmap->tiles->data[(jW * (bmap->mapw)) + iW] + bmap->tileoffset - 1,
                 (u16*)GET_TILE_XY(bmap, iW, jW), 
                 i,
                 j
         );
+        */
         jW++;
-        j++;
+     //   j++;
+    }
+
+    if ( (j + numtiles) >= bmap->planheight) {
+        // We will wrap around in the plane
+
+        u16 numtiles_a = (bmap->planheight - j);
+        u16 numtiles_b = numtiles - numtiles_a;
+
+        VDP_setTileMapDataRect(
+                bmap->plane,
+                tiles,
+                i,
+                j,
+                1,
+                numtiles_a
+        );
+        VDP_setTileMapDataRect(
+                bmap->plane,
+                (u16*)tiles + numtiles_a,
+                i,
+                0,
+                1,
+                numtiles_b
+        );
+    } else {
+        // Does this handle plane wrap around?  NOPE
+        VDP_setTileMapDataRect(
+                bmap->plane,
+                tiles,
+                i,
+                j,
+                1,
+                numtiles
+        );
     }
 }
