@@ -14,6 +14,6 @@ jobs:
     - name: Install gendev
       run: sudo apt-get install -y ./gendev_0.4.1_all.deb
     - name: build
-      run: make install
+      run: sudo make install
     - name: build examples
       run: make clean_examples && make examples
