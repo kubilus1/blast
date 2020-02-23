@@ -1,1 +1,1 @@
-BITMAP terrain1 "terrain1.bmp" 0 
+IMAGE terrain1 "terrain1.bmp" 0 

@@ -1,9 +1,9 @@
-#include "genesis.h"
+//#include "genesis.h"
 #include "blast.h"
 
 #include "images.h"
-#include "terrain_map1.h"
-#include "math_tables.h"
+//#include "terrain_map1.h"
+#include "terrain1.h"
 
 u16 terrain_tile_offset = 0;
 blastmap terrain1map;
@@ -28,7 +28,8 @@ u8 lista[3];
 
 void do_coll(spritedef* sprta, spritedef* sprtb) {
     // Move sprite in the same direction
-    if(get_manifold(sprta, sprtb, &coll_manifold)) {
+    VDP_drawText(" COL CALLBACK  ", 1,1);
+    if(get_circle_manifold(sprta, sprtb, &coll_manifold)) {
         sprite_bounce(sprta, sprtb, &coll_manifold);
     }
 
@@ -36,8 +37,12 @@ void do_coll(spritedef* sprta, spritedef* sprtb) {
 }
 void terrain_coll(spritedef* sprt, u8 coll) {
     // Some kind of terrain collision detected
+#ifdef FOO
     VDP_drawText(" T COLLIS    ", 2,2);
+    uintToStr(coll, str, 3);
+    VDP_drawText(str, 10, 2); 
     return;
+#endif
 }
 
 void (*coll_callback)(spritedef* sprta, spritedef* sprtb) = &do_coll;
@@ -77,18 +82,23 @@ int main() {
      */
 
     VDP_setPalette(PAL0, (u16*)terrain1.palette->data);
+    /*
     terrain_tile_offset = load_bmp(
             (u32*) terrain1.image,
             terrain1.w,
             terrain1.h
     );
+    */
 
-    blastmap_init(&terrain1map, &terrain1_map, terrain_tile_offset, PLAN_A);
+    SYS_disableInts();
+    terrain_tile_offset = load_img(&terrain1);
+
+    blastmap_init(&terrain1map, &terrain1_map, (u16*)terrain1.map->tilemap, terrain_tile_offset, PLAN_A);
     load_visible_map(&terrain1map,0,0);
 
+    SYS_enableInts();
     hscroll = -(terrain1map.tX * 8);
     vscroll = terrain1map.tY * 8;
-    
     
     /*
      *
@@ -96,10 +106,15 @@ int main() {
      *
      */
     
-    asprite_idx = sprite_init(&asprite,terrain_tile_offset+7,1,8,8,1,1,PAL0);
-    bsprite_idx = sprite_init(&bsprite,terrain_tile_offset+7,1,32,32,1,1,PAL1);
-    csprite_idx = sprite_init(&csprite,terrain_tile_offset+7,1,48,48,1,1,PAL2);
+    asprite_idx = sprite_init(&asprite,terrain_tile_offset+5,1,8,8,1,1,PAL0);
+    bsprite_idx = sprite_init(&bsprite,terrain_tile_offset+5,1,32,32,1,1,PAL1);
+    csprite_idx = sprite_init(&csprite,terrain_tile_offset+5,1,48,48,1,1,PAL2);
 
+    /*
+    while(1) {
+        VDP_waitVSync();
+    }
+    */
     //u8 listb[2];
 
     lista[0] = asprite_idx;
@@ -108,6 +123,17 @@ int main() {
 
     //uintToStr(asprite_idx, str, 2);
     //BMP_drawText(str, 2, 2);
+    asprite.inv_mass = FIX16(0.5);
+    bsprite.inv_mass = FIX16(0.5);
+    csprite.inv_mass = FIX16(0.5);
+   
+#ifdef FOO
+    int i; 
+    for(i=0;i<32;i++){
+        center_screen(&terrain1map, asprite_idx, &hs, &vs); 
+        VDP_waitVSync();
+    }
+#endif
 
     while(1) {
         // Keep screen centered around a sprite
@@ -119,18 +145,18 @@ int main() {
         // Check for primary sprite collisions
         //check_t_collision(lista, 1, &terrain1map, t_coll_callback);
 
-        if(spr_coll == 1) {
             //VDP_drawText(" VDP COLLIS    ", 20,19);
             // If we have any VDP collision, dig deeper
-            check_collision(lista, 3,  lista, 3, coll_callback);
-            spr_coll = 0;
-        }
+        check_collision(lista, 3,  lista, 3, coll_callback);
+        move_sprites(&terrain1map, t_coll_callback); 
         // Check other sprite collisions 
         // Move all sprites to new positions
-        move_sprites(&terrain1map, t_coll_callback); 
-        drag_sprites();
+        drag_sprites(8);
 
+        SYS_disableInts();
         VDP_showFPS(0);
+        SYS_enableInts();
+
         VDP_waitVSync();
     }
 
