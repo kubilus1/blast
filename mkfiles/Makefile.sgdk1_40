@@ -5,9 +5,9 @@ MAKE?=make
 LIB?=lib
 GENGCC_BIN=$(GENDEV)/bin
 GENBIN=$(GENDEV)/bin
-SGDK_VER=
+SGDK_VER=v1.40
 
-include proj.mk
+-include proj.mk
 
 CC = $(GENGCC_BIN)/m68k-elf-gcc 
 AS = $(GENGCC_BIN)/m68k-elf-as
