@@ -56,6 +56,13 @@ install: libblast.a
 	cp libblast.a $(GENDEV)/m68k-elf/lib
 	cp incs/*.h $(GENDEV)/include/blast
 
+examples: examples/space/out.bin examples/terrain_test2/out.bin examples/physics_test2/out.bin
+%/out.bin:
+	cd `dirname $@` && make
+
+clean_examples:
+	-rm examples/**/out.bin
+
 clean:
 	echo "Clean"
 	-rm libs/*.o
