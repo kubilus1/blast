@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Test and build examples
 
 on: [push]
 
@@ -9,6 +9,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
+    - name: Setup
+      run: apt-get update && apt-get install -y build-essential
     - name: build
       run: make install
     - name: build examples
