@@ -12,7 +12,7 @@ jobs:
     - name: Get gendev
       run: wget https://github.com/kubilus1/gendev/releases/download/0.4.1/gendev_0.4.1_all.deb 
     - name: Install gendev
-      run: apt-get install -y ./gendev_0.4.1_all.deb
+      run: sudo apt-get install -y ./gendev_0.4.1_all.deb
     - name: Setup env
       run: . ~/.gendev
     - name: build
