@@ -47,7 +47,8 @@ ASFLAGS = -m68000 --register-prefix-optional
 #LIBS =  -L$(GENDEV)/m68k-elf/lib -L$(GENDEV)/sgdk$(SGDK_VER)/lib -lmd -lnosys -lblast
 
 LIBS =  -L$(GENDEV)/m68k-elf/lib -L$(GENDEV)/sgdk$(SGDK_VER)/lib -lmd -lblast
-LINKFLAGS = -T $(GENDEV)/ldscripts/sgdk.ld -Map=output.map -nostdlib 
+#LINKFLAGS = -T $(GENDEV)/ldscripts/md.ld -Map=output.map -nostdlib 
+LINKFLAGS = -T $(GENDEV)/sgdk$(SGDK_VER)/md.ld -Map=output.map -nostdlib 
 SCDLINKFLAGS = -T scd/mdcd.ld -nostdlib 
 ARCHIVES = $(GENDEV)/sgdk$(SGDK_VER)/lib/libmd.a 
 
