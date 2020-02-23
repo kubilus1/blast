@@ -39,20 +39,29 @@ void _hblank() {
 }
 
 void blast_init() {
-    SYS_disableInts();
     VDP_init();
-    VDP_resetSprites();
-    VDP_setScreenWidth256();
+    
+    SYS_disableInts();
+    
+    //VDP_resetSprites();
+    //VDP_setScreenWidth256();
     //VDP_setScreenWidth320();
+    
     //VDP_setHIntCounter(2);
     //VDP_setHInterrupt(1);
-    VDP_setPlanSize(64,32);
+    
+    //VDP_setPlanSize(64,64);
+    
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
     //VDP_setTextPalette(1);
     //VDP_clearPlan(VDP_PLAN_A, 0);
-    VDP_clearPlan(PLAN_A, 0);
+    
+    //VDP_clearPlan(PLAN_A, 0);
+    //VDP_clearPlan(PLAN_B, 0);
+    
     //VDP_clearPlan(VDP_PLAN_B, 0);
-    VDP_clearPlan(PLAN_B, 0);
+    
+    
     SYS_setVIntCallback(vblank);
     //SYS_setHIntCallback(hblank);
     //memset(coll_row, 0, sizeof(coll_row));
@@ -79,3 +88,11 @@ void wait_vsync()
     while (!(*pw & VDP_VBLANK_FLAG));
 }
 
+void BLAST_debugText(const char* inbuf, u16 x, u16 y) { 
+    //
+#ifdef DEBUG_TEXT
+    SYS_disableInts();
+    VDP_drawText(inbuf, x, y);
+    SYS_enableInts();
+#endif
+}

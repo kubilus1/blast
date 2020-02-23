@@ -401,6 +401,15 @@ void load_visible_map(blastmap* bmap, int xoffset, int yoffset) {
                 jW = 0;
             }
             set_tile(bmap, jW, iW, j, i);
+            /*
+            VDP_setTileMapXY(
+                    bmap->plane, 
+                    //(u16*)bmap->tiles->data[(i * (bmap->mapw)) + j] + bmap->tileoffset - 1,
+                    (u16*)GET_TILE_XY(bmap, jW, iW), 
+                    j,
+                    i
+            );
+            */
             j++;
             jW++;
         }
@@ -473,6 +482,7 @@ void load_map_row(blastmap* bmap, u8 row) {
         jW++;
     }
 
+    SYS_disableInts();
     if ( (j + numtiles) >= bmap->planwidth ) {
         // We will wrap around in the plane
 
@@ -509,6 +519,7 @@ void load_map_row(blastmap* bmap, u8 row) {
         );
   
     }
+    SYS_enableInts();
 
     /*
     VDP_setTileMapData(
@@ -574,6 +585,7 @@ void load_map_col(blastmap* bmap, u8 col) {
      //   j++;
     }
 
+    SYS_disableInts();
     if ( (j + numtiles) >= bmap->planheight) {
         // We will wrap around in the plane
 
@@ -607,4 +619,5 @@ void load_map_col(blastmap* bmap, u8 col) {
                 numtiles
         );
     }
+    SYS_enableInts();
 }
