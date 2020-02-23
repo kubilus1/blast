@@ -20,9 +20,11 @@ void vblank();
 void hblank();
 void blast_init();
 void wait_vsync();
-
+void BLAST_debugText(const char* inbuf, u16 x, u16 y); 
+/*
 u8 coll_col [40];
 u8 coll_row [28];
+*/
 u8 spr_coll;
 blastmap* fore_map;
 //u16 coll_vcnt;
