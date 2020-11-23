@@ -219,6 +219,7 @@ boot/rom_head.bin: boot/rom_head.o
 	
 
 clean:
+	$(RM) $(HEADERS)
 	$(RM) $(RESOURCES)
 	$(RM) *.o *.bin *.elf *.elf_scd *.map *.iso
 	$(RM) boot/*.o boot/*.bin
