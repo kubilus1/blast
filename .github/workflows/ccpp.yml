@@ -17,5 +17,5 @@ jobs:
       run: sudo make install
     - name: prereqs
       run: python3 -m pip install xmltodict
-    - name: build examples
-      run: make clean_examples && make examples
+    - name: build tests
+      run: make clean_tests && make tests
