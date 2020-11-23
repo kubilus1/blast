@@ -53,7 +53,7 @@ typedef struct d_map{
 
     // Which plane are we using?
     //u16 plane;
-    VDPPlan plane;
+    VDPPlane plane;
 
     // tiles -> map of tiles
     tilemap* tiles;
@@ -63,7 +63,7 @@ typedef struct d_map{
 
 } blastmap;
 
-void blastmap_init(blastmap* bmap, tilemap* tmap, u16* tlookup, u16 tileoffset, VDPPlan plane);
+void blastmap_init(blastmap* bmap, tilemap* tmap, u16* tlookup, u16 tileoffset, VDPPlane plane);
 void load_map(blastmap* bmap, int xoffset, int yoffset);
 void load_visible_map(blastmap* bmap, int xoffset, int yoffset);
 void load_map_row(blastmap* bmap, u8 row);

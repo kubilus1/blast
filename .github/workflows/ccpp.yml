@@ -10,12 +10,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Get gendev
-      run: wget https://github.com/kubilus1/gendev/releases/download/0.4.0/gendev_0.4.0_all.deb 
+      run: wget https://github.com/kubilus1/gendev/releases/download/0.5.0/gendev_0.5.0_all.deb 
     - name: Install gendev
-      run: sudo apt-get install -y ./gendev_0.4.0_all.deb
+      run: sudo apt-get install -y ./gendev_0.5.0_all.deb
     - name: build
       run: sudo make install
     - name: prereqs
       run: python3 -m pip install xmltodict
-    - name: build examples
-      run: make clean_examples && make examples
+    - name: build tests
+      run: make clean_tests && make tests

@@ -60,6 +60,13 @@ examples: examples/space/out.bin examples/terrain_test2/out.bin examples/physics
 %/out.bin:
 	cd `dirname $@` && make
 
+TESTS=$(wildcard tests/*)
+TESTROMS=$(addsuffix /out.bin,$(TESTS))
+tests: $(TESTROMS) 
+
+clean_tests:
+	-rm tests/**/out.bin
+
 clean_examples:
 	-rm examples/**/out.bin
 

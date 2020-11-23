@@ -6,7 +6,8 @@
 //#include "tilemap.h"
 
 #define MAX_SPRITE 80
-#define SLIST 0xDC00
+//#define SLIST 0xF400
+#define SLIST slist_addr
 #define MAX_SPRITE_COL 2
 #define MAX_SPRITE_ROW 2
 

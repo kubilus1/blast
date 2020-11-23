@@ -6,3 +6,5 @@
 *.o
 tags
 *bkp*
+output.map
+/*.s

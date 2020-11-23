@@ -1,15 +1,15 @@
 #include "genesis.h"
 #include "blast.h"
 
-void blastmap_init(blastmap* bmap, tilemap* tmap, u16* tlookup, u16 tileoffset, VDPPlan plane) {
+void blastmap_init(blastmap* bmap, tilemap* tmap, u16* tlookup, u16 tileoffset, VDPPlane plane) {
     bmap->tX = 64; 
     bmap->tY = 64;
     bmap->winX = bmap->tX;
     bmap->winY = bmap->tY;
     bmap->maph = 0;
     bmap->mapw = 0;    
-    bmap->planwidth = VDP_getPlanWidth();
-    bmap->planheight = VDP_getPlanHeight();
+    bmap->planwidth = VDP_getPlaneWidth();
+    bmap->planheight = VDP_getPlaneHeight();
     bmap->tileoffset = tileoffset;
     bmap->plane = plane;
     bmap->tiles = tmap;
@@ -495,7 +495,9 @@ void load_map_row(blastmap* bmap, u8 row) {
                 j,
                 i,
                 numtiles_a,
-                1
+                1,
+                1,
+                CPU
         );
         VDP_setTileMapDataRect(
                 bmap->plane,
@@ -503,7 +505,9 @@ void load_map_row(blastmap* bmap, u8 row) {
                 0,
                 i,
                 numtiles_b,
-                1
+                1,
+                1,
+                CPU
         );
 
     } else {
@@ -515,7 +519,9 @@ void load_map_row(blastmap* bmap, u8 row) {
                 j,
                 i,
                 numtiles,
-                1
+                1,
+                1,
+                CPU
         );
   
     }
@@ -598,7 +604,9 @@ void load_map_col(blastmap* bmap, u8 col) {
                 i,
                 j,
                 1,
-                numtiles_a
+                numtiles_a,
+                1,
+                CPU
         );
         VDP_setTileMapDataRect(
                 bmap->plane,
@@ -606,7 +614,9 @@ void load_map_col(blastmap* bmap, u8 col) {
                 i,
                 0,
                 1,
-                numtiles_b
+                numtiles_b,
+                1,
+                CPU
         );
     } else {
         // Does this handle plane wrap around?  NOPE
@@ -616,7 +626,9 @@ void load_map_col(blastmap* bmap, u8 col) {
                 i,
                 j,
                 1,
-                numtiles
+                numtiles,
+                1,
+                CPU
         );
     }
     SYS_enableInts();
