@@ -61,7 +61,7 @@ void BLAST_updateSprites()
 
         next_idx = sprite->link;
         
-        //uintToStr(sprite->link, abuf, 3);
+        //uintToStr(sprite->posy, abuf, 3);
         //VDP_drawText(abuf, 5, 7+i);
 
         if(next_idx == 0)
@@ -857,7 +857,7 @@ void vscroll_sprites(s8 vscroll)
 
     while(1)
     {
-        //VDP_drawTextBG(VDP_PLAN_A, "SCROLL", 0x8000, 4,4);
+        //VDP_drawTextBG(VDP_BG_A, "SCROLL", 0x8000, 4,4);
         // If the next link is 0, we are at the end
         tsprite = _sprite_all[cur_idx];
     

@@ -4,10 +4,10 @@
 
 char str[10];
 void vblank() {
-    //VDP_setHorizontalScroll(PLAN_B,hscroll*4);
-    //VDP_setVerticalScroll(PLAN_B,vScroll*4);
-    VDP_setHorizontalScroll(PLAN_A,hs);
-    VDP_setVerticalScroll(PLAN_A,vs);
+    //VDP_setHorizontalScroll(BG_B,hscroll*4);
+    //VDP_setVerticalScroll(BG_B,vScroll*4);
+    VDP_setHorizontalScroll(BG_A,hs);
+    VDP_setVerticalScroll(BG_A,vs);
 
     //VDP_updateSprites(1,FALSE);
     BLAST_updateSprites();
@@ -45,7 +45,7 @@ void blast_init() {
     
     //VDP_resetSprites();
     //VDP_setScreenWidth256();
-    //VDP_setScreenWidth320();
+    VDP_setScreenWidth320();
     
     //VDP_setHIntCounter(2);
     //VDP_setHInterrupt(1);
@@ -53,13 +53,13 @@ void blast_init() {
     //VDP_setPlanSize(64,64);
     
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
-    //VDP_setTextPalette(1);
-    //VDP_clearPlan(VDP_PLAN_A, 0);
+    VDP_setTextPalette(1);
+    //VDP_clearPlan(VDP_BG_A, 0);
     
-    //VDP_clearPlan(PLAN_A, 0);
-    //VDP_clearPlan(PLAN_B, 0);
+    VDP_clearPlane(BG_A, 0);
+    VDP_clearPlane(BG_B, 0);
     
-    //VDP_clearPlan(VDP_PLAN_B, 0);
+    //VDP_clearPlan(VDP_BG_B, 0);
     
     
     SYS_setVIntCallback(vblank);
@@ -96,3 +96,25 @@ void BLAST_debugText(const char* inbuf, u16 x, u16 y) {
     SYS_enableInts();
 #endif
 }
+
+void showFPS(VDPPlane plan, u16 float_display)
+{
+    char str[16];
+    SYS_disableInts();
+    if (float_display)
+    {
+        fix32ToStr(getFPS_f(), str, 1);
+        VDP_clearText(2, 1, 5);
+    }
+    else
+    {
+        uintToStr(getFPS(), str, 1);
+        VDP_clearText(2, 1, 2);
+    }
+
+    // display FPS
+    VDP_drawTextBG(plan,"     ",1,1);
+    VDP_drawTextBG(plan,str,1,1);
+    SYS_enableInts();
+}
+

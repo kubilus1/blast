@@ -4,6 +4,8 @@
 #include "sprite.h"
 #include "u8_stack.h"
 #include "math_tables.h"
+//#include "logic.h"
+//#include "physics.h"
 
 #ifndef _BLAST
 #define _BLAST
@@ -21,6 +23,7 @@ void hblank();
 void blast_init();
 void wait_vsync();
 void BLAST_debugText(const char* inbuf, u16 x, u16 y); 
+void showFPS(VDPPlane plan, u16 float_display);
 /*
 u8 coll_col [40];
 u8 coll_row [28];

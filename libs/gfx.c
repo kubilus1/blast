@@ -5,7 +5,7 @@ static u16 vdp_offset = TILE_USERINDEX;
 
 u16 draw_img(Image *img) {
     u16 tmp_offset = vdp_offset;
-    VDP_drawImageEx(PLAN_B, img, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, vdp_offset), 0, 0, FALSE, TRUE);
+    VDP_drawImageEx(BG_B, img, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, vdp_offset), 0, 0, FALSE, TRUE);
     vdp_offset += img->tileset->numTile;
     return tmp_offset;
 }
